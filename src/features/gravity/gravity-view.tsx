@@ -1,20 +1,11 @@
 // 【仮実装】土台が動作確認のために置いたもの。引力・描画担当が中身を作り替える。
-import { Image } from 'expo-image';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import type { Planet } from '@/types/domain';
+import { PlanetNode } from '@/components/planet-node';
 
 import type { GravityViewProps } from './contract';
-
-const PLANET_SIZE = 56;
-
-function PlanetDot({ planet, size }: { planet: Planet | null; size: number }) {
-  const style = { width: size, height: size, borderRadius: size / 2 };
-  if (planet?.imageUrl) {
-    return <Image source={{ uri: planet.imageUrl }} style={style} contentFit="cover" />;
-  }
-  return <View style={[style, { backgroundColor: planet?.palette[0] ?? '#999' }]} />;
-}
+import { CANDIDATE_SLOTS, fitDesign, ME_SLOT, type PlanetSlot } from './home-layout';
 
 /** 仮のスコア:すれ違い回数 + 共通タグの割合 */
 function tentativeScore(encounterCount: number, sharedTagCount: number, tagUnionCount: number) {
@@ -23,48 +14,71 @@ function tentativeScore(encounterCount: number, sharedTagCount: number, tagUnion
 }
 
 export function GravityView({ me, candidates, onPressPlanet }: GravityViewProps) {
-  const { width, height } = useWindowDimensions();
-  const cx = width / 2;
-  const cy = height / 2;
-  const maxRadius = Math.min(width, height) / 2 - PLANET_SIZE;
-  const maxScore = Math.max(
-    1,
-    ...candidates.map((c) => tentativeScore(c.encounterCount, c.sharedTagCount, c.tagUnionCount)),
-  );
+  // 最初は画面サイズで仮に置き、実際の表示領域(ヘッダーがある画面では少し低い)が分かったら置き直す
+  const windowSize = useWindowDimensions();
+  const [area, setArea] = useState<{ width: number; height: number } | null>(null);
+  const { width, height } = area ?? windowSize;
+  const { scale, offsetX, offsetY } = fitDesign(width, height);
+
+  // デザインの座標(中心と直径)を、画面上の箱(左上と直径)に直す
+  const place = (slot: PlanetSlot) => {
+    const size = slot.size * scale;
+    return {
+      size,
+      left: offsetX + slot.x * scale - size / 2,
+      top: offsetY + slot.y * scale - size / 2,
+    };
+  };
+
+  // スコアが高い人ほど自分に近い場所に置く。場所の数より多い人は出さない
+  const ranked = [...candidates]
+    .sort(
+      (a, b) =>
+        tentativeScore(b.encounterCount, b.sharedTagCount, b.tagUnionCount) -
+        tentativeScore(a.encounterCount, a.sharedTagCount, a.tagUnionCount),
+    )
+    .slice(0, CANDIDATE_SLOTS.length);
+
+  const mePos = place(ME_SLOT);
 
   return (
-    <View style={styles.space}>
-      {candidates.map((c, i) => {
-        const score = tentativeScore(c.encounterCount, c.sharedTagCount, c.tagUnionCount);
-        const r = PLANET_SIZE * 1.5 + (1 - score / maxScore) * (maxRadius - PLANET_SIZE * 1.5);
-        const angle = (i / candidates.length) * Math.PI * 2;
+    <View
+      style={styles.space}
+      onLayout={(e) =>
+        setArea({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })
+      }
+    >
+      {ranked.map((c, i) => {
+        const slot = CANDIDATE_SLOTS[i];
+        const { size, left, top } = place(slot);
         return (
           <Pressable
             key={c.userId}
             onPress={() => onPressPlanet(c.userId)}
-            style={[
-              styles.planet,
-              {
-                left: cx + r * Math.cos(angle) - PLANET_SIZE / 2,
-                top: cy + r * Math.sin(angle) - PLANET_SIZE / 2,
-              },
-            ]}
+            style={[styles.planet, { left, top }]}
           >
-            <PlanetDot planet={c.planet} size={PLANET_SIZE} />
-            <Text style={styles.label}>{c.nickname}</Text>
+            <PlanetNode planet={c.planet} size={size} label={c.nickname} showLabel={slot.labeled} />
           </Pressable>
         );
       })}
-      <View style={[styles.planet, { left: cx - PLANET_SIZE, top: cy - PLANET_SIZE }]}>
-        <PlanetDot planet={me.planet} size={PLANET_SIZE * 2} />
-        <Text style={styles.label}>{me.nickname}</Text>
-      </View>
+      <Pressable
+        onPress={() => onPressPlanet(me.userId)}
+        style={[styles.planet, { left: mePos.left, top: mePos.top }]}
+      >
+        <PlanetNode
+          planet={me.planet}
+          size={mePos.size}
+          label="You"
+          isMe
+          satellites={me.featuredSatellites}
+        />
+      </Pressable>
     </View>
   );
 }
 
+// 背景(宇宙)はホーム画面側で描くので、ここは透明にする
 const styles = StyleSheet.create({
-  space: { flex: 1, backgroundColor: '#0B1026' },
-  planet: { position: 'absolute', alignItems: 'center' },
-  label: { color: '#fff', fontSize: 11, marginTop: 4 },
+  space: { flex: 1, overflow: 'hidden' },
+  planet: { position: 'absolute' },
 });
