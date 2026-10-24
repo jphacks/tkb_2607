@@ -135,6 +135,7 @@ export default function PlanetDetailScreen() {
               icon={<Image source={pinIcon} style={styles.menuIcon} contentFit="contain" />}
               label={data.isPinned ? '保存をやめる' : '保存する'}
               onPress={togglePin}
+              disabled={setPinned.isPending}
             />
           </View>
         </>
@@ -156,13 +157,21 @@ function MenuItem({
   icon,
   label,
   onPress,
+  disabled,
 }: {
   icon: ReactNode;
   label: string;
   onPress: () => void;
+  disabled?: boolean;
 }) {
   return (
-    <Pressable onPress={onPress} style={styles.menuItem} accessibilityRole="button">
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={[styles.menuItem, disabled && styles.menuItemDisabled]}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+    >
       {icon}
       <Text style={styles.menuLabel}>{label}</Text>
     </Pressable>
@@ -238,6 +247,7 @@ const styles = StyleSheet.create({
     boxShadow: shadow.lg,
   },
   menuItem: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 36 },
+  menuItemDisabled: { opacity: 0.4 },
   menuGlyph: { fontSize: 15, color: color.text.primary, width: 18, textAlign: 'center' },
   menuIcon: { width: 16, height: 16, marginHorizontal: 1 },
   menuLabel: { ...ja(typography.labelHint), letterSpacing: 0, color: color.text.primary },

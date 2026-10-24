@@ -16,8 +16,10 @@ export { RouteErrorBoundary as ErrorBoundary } from '@/components/route-error-bo
 
 // 惑星の効果音を選ぶ。Figma: A06|効果音登録(録音の代わりに、用意した音から選ぶ形にした)
 export default function SoundScreen() {
-  const { data: profile } = useMyProfile();
-  if (!profile) return <Loading />;
+  const { data: profile, error } = useMyProfile();
+  if (!profile) {
+    return <SpaceScreen>{error ? <ErrorText error={error} /> : <Loading />}</SpaceScreen>;
+  }
   return <SoundPicker initial={profile.soundId} />;
 }
 

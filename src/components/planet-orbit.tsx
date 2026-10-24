@@ -66,6 +66,8 @@ export function PlanetOrbit({
   const pan = usePanGesture({
     enabled: swipeable,
     activeOffsetX: [-10, 10],
+    // 先に縦に 10px 動いたらスクロールとみなし、衛星は回さない
+    failOffsetY: [-10, 10],
     onActivate: () => {
       start.set(rotation.get());
     },

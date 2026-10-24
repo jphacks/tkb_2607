@@ -26,21 +26,24 @@ const FILTERS: { value: Filter; label: string }[] = [
 export default function PinsScreen() {
   const { data: pins, error } = usePins();
   const [filter, setFilter] = useState<Filter>('all');
+  // 「最近」の基準の時刻。画面を開いたときに1回だけ決める
+  const [openedAt] = useState(() => Date.now());
 
   const sorted = useMemo(() => {
     if (!pins) return [];
     switch (filter) {
       case 'recent':
-        // 新しくピン止めした順(データ層がこの順で返す)
-        return pins;
+        // 1週間以内にピン止めしたものだけ
+        return pins.filter((p) => openedAt - Date.parse(p.pinnedAt) < 7 * 24 * 60 * 60 * 1000);
       case 'tag':
         return [...pins].sort((x, y) =>
           (x.tags[0]?.name ?? '￿').localeCompare(y.tags[0]?.name ?? '￿', 'ja'),
         );
       default:
-        return [...pins].sort((x, y) => x.nickname.localeCompare(y.nickname, 'ja'));
+        // 新しくピン止めした順(データ層がこの順で返す)
+        return pins;
     }
-  }, [pins, filter]);
+  }, [pins, filter, openedAt]);
 
   return (
     <SpaceScreen
@@ -107,7 +110,11 @@ function PinCard({ pin }: { pin: PinnedPlanet }) {
       {
         text: '外す',
         style: 'destructive',
-        onPress: () => setPinned.mutate({ userId: pin.userId, pinned: false }),
+        onPress: () =>
+          setPinned.mutate(
+            { userId: pin.userId, pinned: false },
+            { onError: (e) => Alert.alert('外せませんでした', e.message) },
+          ),
       },
     ]);
 

@@ -51,6 +51,13 @@ function toTags(rows: { tags: Pick<Tables<'tags'>, 'id' | 'name'> | null }[] | n
   return (rows ?? []).flatMap((r) => (r.tags ? [toTag(r.tags)] : []));
 }
 
+/** 端末に保存されたログイン情報から自分の ID を取る(サーバーに問い合わせないので速い) */
+async function sessionUserId(): Promise<string> {
+  const { data } = await getSupabase().auth.getSession();
+  if (!data.session) throw new Error('ログインしていません');
+  return data.session.user.id;
+}
+
 async function requireUserId(): Promise<string> {
   const { data, error } = await getSupabase().auth.getUser();
   if (error || !data.user) throw new Error('ログインしていません');
@@ -326,7 +333,7 @@ export const supabaseSource: DataSource = {
 
   async getPlanetDetail(userId) {
     const supabase = getSupabase();
-    const myId = await requireUserId();
+    const myId = await sessionUserId();
     const [profile, planet, satellites, tags, pin] = await Promise.all([
       supabase
         .from('profiles')
