@@ -131,7 +131,7 @@ export const supabaseSource: DataSource = {
     const supabase = getSupabase();
     const userId = await requireUserId();
     const [profile, priv, tags, planet] = await Promise.all([
-      supabase.from('profiles').select('nickname').eq('id', userId).single(),
+      supabase.from('profiles').select('nickname, organization').eq('id', userId).single(),
       supabase.from('private_profiles').select('real_name').eq('user_id', userId).maybeSingle(),
       supabase.from('user_tags').select('tags(id, name)').eq('user_id', userId),
       supabase.from('planets').select('image_path, palette').eq('user_id', userId).maybeSingle(),
@@ -140,15 +140,16 @@ export const supabaseSource: DataSource = {
       userId,
       nickname: check(profile)?.nickname ?? '',
       realName: check(priv)?.real_name ?? null,
+      organization: check(profile)?.organization ?? null,
       tags: toTags(check(tags)),
       planet: toPlanet(check(planet)),
     };
   },
 
-  async updateMyProfile({ nickname, realName, tagNames }) {
+  async updateMyProfile({ nickname, realName, organization, tagNames }) {
     const supabase = getSupabase();
     const userId = await requireUserId();
-    check(await supabase.from('profiles').update({ nickname }).eq('id', userId));
+    check(await supabase.from('profiles').update({ nickname, organization }).eq('id', userId));
     check(
       await supabase.from('private_profiles').update({ real_name: realName }).eq('user_id', userId),
     );
@@ -240,7 +241,7 @@ export const supabaseSource: DataSource = {
     const supabase = getSupabase();
     const userId = await requireUserId();
     const [profile, planet, featured, candidates] = await Promise.all([
-      supabase.from('profiles').select('nickname').eq('id', userId).single(),
+      supabase.from('profiles').select('nickname, organization').eq('id', userId).single(),
       supabase.from('planets').select('image_path, palette').eq('user_id', userId).maybeSingle(),
       getFeatured(userId),
       supabase.rpc('get_home_candidates', { p_limit: limit }),
@@ -249,12 +250,14 @@ export const supabaseSource: DataSource = {
       me: {
         userId,
         nickname: check(profile)?.nickname ?? '',
+        organization: check(profile)?.organization ?? null,
         planet: toPlanet(check(planet)),
         featuredSatellites: featured,
       },
       candidates: (check(candidates) ?? []).map((r): HomeCandidate => ({
         userId: r.user_id,
         nickname: r.nickname,
+        organization: r.organization,
         planet: toPlanet({ image_path: r.planet_image_path, palette: r.palette })!,
         // jsonb で返ってくるので、形を指定して読む
         featuredSatellites: (

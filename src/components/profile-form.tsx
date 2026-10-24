@@ -17,6 +17,7 @@ export function ProfileForm({
   const update = useUpdateMyProfile();
   const [nickname, setNickname] = useState(profile?.nickname ?? '');
   const [realName, setRealName] = useState(profile?.realName ?? '');
+  const [organization, setOrganization] = useState(profile?.organization ?? '');
   const [tags, setTags] = useState<string[]>(profile?.tags.map((t) => t.name) ?? []);
   const [tagInput, setTagInput] = useState('');
   const { data: suggestions } = useTagSearch(tagInput);
@@ -29,7 +30,12 @@ export function ProfileForm({
 
   const save = () => {
     update.mutate(
-      { nickname: nickname.trim(), realName: realName.trim() || null, tagNames: tags },
+      {
+        nickname: nickname.trim(),
+        realName: realName.trim() || null,
+        organization: organization.trim() || null,
+        tagNames: tags,
+      },
       { onSuccess: onSaved },
     );
   };
@@ -43,7 +49,13 @@ export function ProfileForm({
       />
       <Field label="本名(自分にしか見えません)" value={realName} onChangeText={setRealName} />
       <Field
-        label="タグ(大学名・サークル名・職場など)"
+        label="所属団体(大学名・会社名など。正式名称で入力してください)"
+        value={organization}
+        onChangeText={setOrganization}
+        placeholder="例:〇〇大学"
+      />
+      <Field
+        label="タグ(興味・サークル名など)"
         value={tagInput}
         onChangeText={setTagInput}
         onSubmitEditing={() => addTag(tagInput)}

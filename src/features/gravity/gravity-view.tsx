@@ -16,10 +16,29 @@ function PlanetDot({ planet, size }: { planet: Planet | null; size: number }) {
   return <View style={[style, { backgroundColor: planet?.palette[0] ?? '#999' }]} />;
 }
 
-/** 仮のスコア:すれ違い回数 + 共通タグの割合 */
-function tentativeScore(encounterCount: number, sharedTagCount: number, tagUnionCount: number) {
+/**
+ * 仮のスコア:すれ違い回数(最優先) + 共通タグの割合(次点) + 所属団体の一致(3番目)。
+ * 所属団体は正式名称で入力してもらう前提で、前後の空白・大文字小文字だけそろえて比較する。
+ */
+function tentativeScore(
+  encounterCount: number,
+  sharedTagCount: number,
+  tagUnionCount: number,
+  sameOrganization: boolean,
+) {
   const jaccard = tagUnionCount > 0 ? sharedTagCount / tagUnionCount : 0;
-  return encounterCount + jaccard * 5;
+  return encounterCount + jaccard * 5 + (sameOrganization ? 2 : 0);
+}
+
+function normalizeOrganization(value: string | null): string | null {
+  const trimmed = value?.trim().toLowerCase();
+  return trimmed ? trimmed : null;
+}
+
+function isSameOrganization(mine: string | null, theirs: string | null): boolean {
+  const a = normalizeOrganization(mine);
+  const b = normalizeOrganization(theirs);
+  return a !== null && b !== null && a === b;
 }
 
 export function GravityView({ me, candidates, onPressPlanet }: GravityViewProps) {
@@ -27,15 +46,19 @@ export function GravityView({ me, candidates, onPressPlanet }: GravityViewProps)
   const cx = width / 2;
   const cy = height / 2;
   const maxRadius = Math.min(width, height) / 2 - PLANET_SIZE;
-  const maxScore = Math.max(
-    1,
-    ...candidates.map((c) => tentativeScore(c.encounterCount, c.sharedTagCount, c.tagUnionCount)),
-  );
+  const scoreOf = (c: (typeof candidates)[number]) =>
+    tentativeScore(
+      c.encounterCount,
+      c.sharedTagCount,
+      c.tagUnionCount,
+      isSameOrganization(me.organization, c.organization),
+    );
+  const maxScore = Math.max(1, ...candidates.map(scoreOf));
 
   return (
     <View style={styles.space}>
       {candidates.map((c, i) => {
-        const score = tentativeScore(c.encounterCount, c.sharedTagCount, c.tagUnionCount);
+        const score = scoreOf(c);
         const r = PLANET_SIZE * 1.5 + (1 - score / maxScore) * (maxRadius - PLANET_SIZE * 1.5);
         const angle = (i / candidates.length) * Math.PI * 2;
         return (

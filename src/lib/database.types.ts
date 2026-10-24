@@ -147,6 +147,8 @@ export type Database = {
           id: string;
           is_dummy: boolean;
           nickname: string;
+          // TODO: organization は手動追加(npm run gen:types で正式に上書きする前提)
+          organization: string | null;
           sound_path: string | null;
         };
         Insert: {
@@ -154,6 +156,7 @@ export type Database = {
           id: string;
           is_dummy?: boolean;
           nickname?: string;
+          organization?: string | null;
           sound_path?: string | null;
         };
         Update: {
@@ -161,6 +164,7 @@ export type Database = {
           id?: string;
           is_dummy?: boolean;
           nickname?: string;
+          organization?: string | null;
           sound_path?: string | null;
         };
         Relationships: [];
@@ -262,6 +266,8 @@ export type Database = {
           featured_satellites: Json;
           last_encounter_at: string;
           nickname: string;
+          // TODO: organization は手動追加(npm run gen:types で正式に上書きする前提)
+          organization: string | null;
           palette: Json;
           planet_image_path: string;
           shared_tag_count: number;

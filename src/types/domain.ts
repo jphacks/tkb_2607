@@ -39,6 +39,8 @@ export type MyProfile = {
   nickname: string;
   /** 本人にしか見えない本名 */
   realName: string | null;
+  /** 所属団体(大学名・会社名など、正式名称)。タグとは別。未入力なら null */
+  organization: string | null;
   tags: Tag[];
   /** まだ作っていなければ null */
   planet: Planet | null;
@@ -47,6 +49,8 @@ export type MyProfile = {
 export type UpdateProfileInput = {
   nickname: string;
   realName: string | null;
+  /** 所属団体(正式名称)。タグとは別で、引力の組織マッチングに使う */
+  organization: string | null;
   /** タグ名の一覧。存在しないタグは新しく作られる */
   tagNames: string[];
 };
@@ -55,6 +59,8 @@ export type UpdateProfileInput = {
 export type HomeUser = {
   userId: UserId;
   nickname: string;
+  /** 所属団体(正式名称)。相手との組織マッチング判定に使う */
+  organization: string | null;
   planet: Planet | null;
   featuredSatellites: SatelliteSummary[];
 };
@@ -63,6 +69,8 @@ export type HomeUser = {
 export type HomeCandidate = {
   userId: UserId;
   nickname: string;
+  /** 所属団体(正式名称)。自分の organization と比較して組織マッチングに使う */
+  organization: string | null;
   planet: Planet;
   /** 最大3つ */
   featuredSatellites: SatelliteSummary[];

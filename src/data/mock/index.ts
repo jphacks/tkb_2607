@@ -22,6 +22,7 @@ type MockUser = {
   password: string;
   nickname: string;
   realName: string | null;
+  organization: string | null;
   tagNames: string[];
   planet: Planet | null;
   satellites: Satellite[];
@@ -41,6 +42,7 @@ function createInitialState() {
     password: 'password',
     nickname: ME_FIXTURE.nickname,
     realName: ME_FIXTURE.realName,
+    organization: ME_FIXTURE.organization,
     tagNames: [...ME_FIXTURE.tags],
     planet: { imageUrl: null, palette: ME_FIXTURE.palette },
     satellites: [],
@@ -56,6 +58,7 @@ function createInitialState() {
       password: 'password',
       nickname: f.nickname,
       realName: null,
+      organization: f.organization,
       tagNames: [...f.tags],
       planet: { imageUrl: null, palette: f.palette },
       satellites: [],
@@ -159,6 +162,7 @@ export const mockSource: DataSource = {
       password,
       nickname: '',
       realName: null,
+      organization: null,
       tagNames: [],
       planet: null,
       satellites: [],
@@ -180,16 +184,18 @@ export const mockSource: DataSource = {
       userId: me.id,
       nickname: me.nickname,
       realName: me.realName,
+      organization: me.organization,
       tags: toTags(me.tagNames),
       planet: me.planet,
     };
   },
 
-  async updateMyProfile({ nickname, realName, tagNames }) {
+  async updateMyProfile({ nickname, realName, organization, tagNames }) {
     await wait();
     const me = currentUser();
     me.nickname = nickname;
     me.realName = realName;
+    me.organization = organization;
     me.tagNames = [...new Set(tagNames.map((t) => t.trim()).filter(Boolean))];
     me.tagNames.forEach(tagId);
   },
@@ -255,6 +261,7 @@ export const mockSource: DataSource = {
       candidates.push({
         userId: user.id,
         nickname: user.nickname,
+        organization: user.organization,
         planet: user.planet,
         featuredSatellites: featured(user),
         sharedTagCount: shared,
@@ -272,6 +279,7 @@ export const mockSource: DataSource = {
       me: {
         userId: me.id,
         nickname: me.nickname,
+        organization: me.organization,
         planet: me.planet,
         featuredSatellites: featured(me),
       },
