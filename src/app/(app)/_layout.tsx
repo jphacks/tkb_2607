@@ -2,9 +2,12 @@ import { Stack } from 'expo-router';
 
 import { ErrorText, Loading, PrimaryButton, Screen } from '@/components/ui';
 import { useMyProfile } from '@/data';
+import { useEncounterDetection } from '@/features/encounter';
 
 export default function AppLayout() {
   const { data: profile, isLoading, error, refetch } = useMyProfile();
+  // 惑星まで作り終えた人だけ、すれ違い検知を動かす(相手のホームに出られるのは惑星がある人だけ)
+  useEncounterDetection(!!profile && profile.nickname !== '' && profile.planet !== null);
   if (isLoading) return <Loading />;
   if (!profile) {
     return (
@@ -45,6 +48,7 @@ export default function AppLayout() {
         <Stack.Screen name="lab/native" options={{ title: 'ネイティブ部品チェック' }} />
         <Stack.Screen name="lab/gravity" options={{ title: '引力の練習場' }} />
         <Stack.Screen name="lab/photo" options={{ title: '写真の練習場' }} />
+        <Stack.Screen name="lab/ble" options={{ title: 'すれ違い検知(BLE)' }} />
       </Stack.Protected>
     </Stack>
   );
