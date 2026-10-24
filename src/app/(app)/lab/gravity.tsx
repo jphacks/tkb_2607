@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { SpaceBackground } from '@/components/space-background';
 import { getSampleHome } from '@/data';
 import { GravityView } from '@/features/gravity';
 
@@ -16,11 +17,16 @@ export default function GravityLabScreen() {
 
   return (
     <View style={styles.container}>
+      <SpaceBackground />
       <GravityView
         me={home.me}
         candidates={home.candidates}
         onPressPlanet={(userId) =>
-          setTapped(home.candidates.find((c) => c.userId === userId)?.nickname ?? userId)
+          setTapped(
+            userId === home.me.userId
+              ? '自分'
+              : (home.candidates.find((c) => c.userId === userId)?.nickname ?? userId),
+          )
         }
       />
       <View style={styles.panel} pointerEvents="box-none">

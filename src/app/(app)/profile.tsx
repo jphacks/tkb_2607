@@ -9,6 +9,9 @@ export default function ProfileScreen() {
     <Screen>
       <ProfileForm submitLabel="保存" onSaved={() => router.back()} />
       <PrimaryButton title="惑星をつくりなおす" onPress={() => router.push('/planet/create')} />
+      {/* ホームの右上から移動ボタンをなくしたので、衛星とラボへの入口はここに置く */}
+      <PrimaryButton title="衛星" onPress={() => router.push('/satellites')} />
+      <PrimaryButton title="ラボ" onPress={() => router.push('/lab')} />
       <PrimaryButton title="ログアウト" onPress={() => signOut()} />
     </Screen>
   );
