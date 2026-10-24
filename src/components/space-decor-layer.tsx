@@ -7,18 +7,12 @@ import {
   Group,
   Image as SkiaImage,
   Oval,
-  useImage,
 } from '@shopify/react-native-skia';
 import { memo, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import {
-  DECORATION_IMAGES,
-  fitB01,
-  ORBIT_STYLE,
-  ORBITS,
-  SPACE_DECORATIONS,
-} from './space-decorations';
+import { fitB01, ORBIT_STYLE, ORBITS, SPACE_DECORATIONS } from './space-decorations';
+import { useSpaceAssets } from './space-assets';
 
 // 描く内容は画面の大きさだけで決まるので、親(ホーム)がデータの更新で描き直されても描き直さない
 export const SpaceDecorLayer = memo(function SpaceDecorLayer() {
@@ -28,12 +22,8 @@ export const SpaceDecorLayer = memo(function SpaceDecorLayer() {
   const { width, height } = area ?? windowSize;
   const { scale, offsetX, offsetY } = fitB01(width, height);
 
-  const images = {
-    sparkle: useImage(DECORATION_IMAGES.sparkle),
-    metal: useImage(DECORATION_IMAGES.metal),
-    glass: useImage(DECORATION_IMAGES.glass),
-    checker: useImage(DECORATION_IMAGES.checker),
-  };
+  // 画像は起動中に読み込み済み(space-assets.ts)。まだなら星はまとめて後から出す(種類ごとにバラバラに出さない)
+  const images = useSpaceAssets()?.decorations;
 
   return (
     <View
@@ -61,23 +51,23 @@ export const SpaceDecorLayer = memo(function SpaceDecorLayer() {
             </Oval>
           ))}
         </Group>
-        {SPACE_DECORATIONS.map((d, i) => {
-          const image = images[d.kind];
-          if (!image) return null;
-          const w = d.width * scale;
-          const h = d.height * scale;
-          return (
-            <SkiaImage
-              key={i}
-              image={image}
-              x={offsetX + d.x * scale - w / 2}
-              y={offsetY + d.y * scale - h / 2}
-              width={w}
-              height={h}
-              fit="contain"
-            />
-          );
-        })}
+        {images &&
+          SPACE_DECORATIONS.map((d, i) => {
+            const image = images[d.kind];
+            const w = d.width * scale;
+            const h = d.height * scale;
+            return (
+              <SkiaImage
+                key={i}
+                image={image}
+                x={offsetX + d.x * scale - w / 2}
+                y={offsetY + d.y * scale - h / 2}
+                width={w}
+                height={h}
+                fit="contain"
+              />
+            );
+          })}
       </Canvas>
     </View>
   );

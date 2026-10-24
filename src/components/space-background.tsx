@@ -6,9 +6,11 @@ import { StyleSheet } from 'react-native';
 
 import { color } from '@/theme/tokens';
 
-const gradient = require('@/assets/images/home/space-gradient.png');
+import { SPACE_GRADIENT, useSpaceAssets } from './space-assets';
 
 export function SpaceBackground() {
+  // 起動中に読み込み済みの画像を使う(ホームを開いた瞬間に出る)。まだなら通常どおり読み込む
+  const gradient = useSpaceAssets()?.gradient ?? SPACE_GRADIENT;
   return (
     <Image
       source={gradient}
