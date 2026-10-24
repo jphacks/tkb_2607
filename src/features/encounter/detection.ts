@@ -21,6 +21,8 @@ const TOKEN_REFRESH_MARGIN_MS = 3 * 60 * 1000;
 /** 同じトークンを報告し直さない時間(トークンは15分で切り替わる) */
 const SAME_TOKEN_SKIP_MS = 15 * 60 * 1000;
 const MAX_RETRY_QUEUE = 50;
+/** 開始に失敗したとき(起動直後に通信できないなど)、やり直すまでの時間 */
+const START_RETRY_MS = 30 * 1000;
 const MAX_NATIVE_LOGS = 100;
 
 export type BleLogEntry = { id: string; message: string; at: string };
@@ -28,6 +30,10 @@ export type BleLogEntry = { id: string; message: string; at: string };
 export type EncounterDetectionState = {
   /** 今の開発ビルドに BLE モジュールが入っているか */
   available: boolean;
+  /** 検知を動かす指示が出ているか(開始に失敗してやり直し待ちの間も true) */
+  active: boolean;
+  /** 開始・停止の処理中か(この間はボタンを押せなくする) */
+  busy: boolean;
   status: BleStatus | null;
   myToken: string | null;
   /** 送信待ち(通信に失敗した報告)の数 */
@@ -41,6 +47,8 @@ export type EncounterDetectionState = {
 
 let state: EncounterDetectionState = {
   available: isBleAvailable,
+  active: false,
+  busy: false,
   status: null,
   myToken: null,
   pendingReports: 0,
@@ -56,11 +64,17 @@ function setState(patch: Partial<EncounterDetectionState>) {
 
 // ---------- 内部の状態 ----------
 
+/** 検知を動かす指示が出ているか(start から stop まで) */
+let wanted = false;
+/** 実際に動いているか(開始に失敗すると wanted のまま false になる) */
 let running = false;
-/** start / stop が重なったときに、古い start の続きを捨てるための番号 */
+/** start / stop が重なったときに、古い処理の続きを捨てるための番号 */
 let generation = 0;
 let currentToken: BleToken | null = null;
+/** 取得中のトークン。同時に何回頼まれても、サーバーへの問い合わせは1回にまとめる */
+let tokenRequest: Promise<BleToken> | null = null;
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+let restartTimer: ReturnType<typeof setTimeout> | null = null;
 let nativeSubscriptions: { remove(): void }[] = [];
 let appStateSubscription: NativeEventSubscription | null = null;
 const reportedAt = new Map<string, number>();
@@ -71,8 +85,11 @@ const errorMessage = (error: unknown) => (error instanceof Error ? error.message
 /** すれ違い検知を始める。BLE モジュールがないビルドでは何もしない */
 export async function startEncounterDetection() {
   if (!nativeBle || running) return;
+  wanted = true;
   running = true;
+  clearRestartTimer();
   const myGeneration = ++generation;
+  setState({ active: true, busy: true });
   subscribe();
   try {
     const token = await refreshToken(true);
@@ -83,38 +100,72 @@ export async function startEncounterDetection() {
       useGatt: true,
       cooldownSec: COOLDOWN_SEC,
     });
-    setState({ error: null, status: nativeBle.getStatus() });
+    if (myGeneration !== generation) return;
+    setState({ error: null, busy: false, status: nativeBle.getStatus() });
   } catch (error) {
     if (myGeneration !== generation) return;
-    setState({ error: `開始できませんでした: ${errorMessage(error)}` });
     running = false;
     unsubscribe();
+    setState({
+      error: `開始できませんでした(30秒後にやり直します): ${errorMessage(error)}`,
+      busy: false,
+    });
+    // 起動直後に通信できなかったときなど。止める指示が出るまで、時間をおいてやり直す
+    restartTimer = setTimeout(() => {
+      restartTimer = null;
+      if (wanted) void startEncounterDetection();
+    }, START_RETRY_MS);
   }
 }
 
 /** すれ違い検知を止める(ログアウト時など) */
 export async function stopEncounterDetection() {
-  if (!nativeBle || !running) return;
+  if (!nativeBle || !wanted) return;
+  wanted = false;
   running = false;
-  generation++;
+  const myGeneration = ++generation;
+  clearRestartTimer();
   unsubscribe();
   currentToken = null;
-  setState({ myToken: null });
+  tokenRequest = null;
+  // 次に別のアカウントでログインしたとき、前の人の報告を送らないように捨てる
+  retryQueue = [];
+  reportedAt.clear();
+  setState({ active: false, busy: true, myToken: null, pendingReports: 0 });
   await nativeBle.stop();
-  setState({ status: nativeBle.getStatus() });
+  if (myGeneration !== generation) return;
+  setState({ busy: false, status: nativeBle.getStatus() });
+}
+
+function clearRestartTimer() {
+  if (restartTimer) clearTimeout(restartTimer);
+  restartTimer = null;
 }
 
 // ---------- トークン ----------
 
-async function refreshToken(force = false): Promise<BleToken> {
+function refreshToken(force = false): Promise<BleToken> {
   if (
     !force &&
     currentToken &&
     Date.parse(currentToken.validUntil) - Date.now() > TOKEN_REFRESH_MARGIN_MS
   ) {
-    return currentToken;
+    return Promise.resolve(currentToken);
   }
+  if (!tokenRequest) {
+    const request = fetchToken().finally(() => {
+      if (tokenRequest === request) tokenRequest = null;
+    });
+    tokenRequest = request;
+  }
+  return tokenRequest;
+}
+
+async function fetchToken(): Promise<BleToken> {
+  const myGeneration = generation;
   const token = await getBleToken();
+  // 待っている間に止められたら結果を使わない(止めたあとにタイマーが動き出さないように)
+  if (myGeneration !== generation) return token;
   const changed = token.token !== currentToken?.token;
   currentToken = token;
   if (changed && running) nativeBle?.updateToken(token.token);
@@ -143,21 +194,29 @@ function scheduleRefresh(token: BleToken) {
 async function handleEncounter(event: BleEncounterEvent) {
   refreshToken().catch(() => {});
 
+  const now = Date.now();
   const last = reportedAt.get(event.token);
-  if (last !== undefined && Date.now() - last < SAME_TOKEN_SKIP_MS) return;
-  reportedAt.set(event.token, Date.now());
+  if (last !== undefined && now - last < SAME_TOKEN_SKIP_MS) return;
+  // トークンは15分で切り替わるので、それより古い記録はもう使わない
+  for (const [token, at] of reportedAt) {
+    if (now - at >= SAME_TOKEN_SKIP_MS) reportedAt.delete(token);
+  }
+  reportedAt.set(event.token, now);
 
-  await send({ token: event.token, rssi: event.rssi, detectedAt: event.detectedAt });
+  const myGeneration = generation;
+  await send({ token: event.token, rssi: event.rssi, detectedAt: event.detectedAt }, myGeneration);
   await flushRetryQueue();
 }
 
-async function send(report: EncounterReport): Promise<boolean> {
+async function send(report: EncounterReport, myGeneration: number): Promise<boolean> {
   try {
     const result = await reportEncounter(report);
     addEncounterLog({ ...report, result: result.reason });
     return true;
   } catch {
     addEncounterLog({ ...report, result: 'error' });
+    // 送っている間に止められた(ログアウトなど)ら、送り直しの対象にしない
+    if (myGeneration !== generation) return false;
     retryQueue = [...retryQueue, report].slice(-MAX_RETRY_QUEUE);
     setState({ pendingReports: retryQueue.length });
     return false;
@@ -166,12 +225,15 @@ async function send(report: EncounterReport): Promise<boolean> {
 
 async function flushRetryQueue() {
   if (retryQueue.length === 0) return;
+  const myGeneration = generation;
   const queue = retryQueue;
   retryQueue = [];
   setState({ pendingReports: 0 });
   for (const report of queue) {
+    // 途中で止められたら、残りは送らない(次にログインした人の分として送らないため)
+    if (myGeneration !== generation) return;
     // send が失敗した分は、send の中でまたキューに戻る
-    await send(report);
+    await send(report, myGeneration);
   }
 }
 

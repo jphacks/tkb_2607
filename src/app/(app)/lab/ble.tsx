@@ -49,10 +49,19 @@ export default function BleLabScreen() {
         {detection.error && <Text style={styles.warning}>{detection.error}</Text>}
       </View>
 
-      {status?.running ? (
-        <PrimaryButton title="検知を止める" onPress={() => void stopEncounterDetection()} />
+      {/* 開始・停止の処理中は押せないようにする(連打で開始と停止が重ならないように) */}
+      {detection.active ? (
+        <PrimaryButton
+          title="検知を止める"
+          onPress={() => void stopEncounterDetection()}
+          loading={detection.busy}
+        />
       ) : (
-        <PrimaryButton title="検知を始める" onPress={() => void startEncounterDetection()} />
+        <PrimaryButton
+          title="検知を始める"
+          onPress={() => void startEncounterDetection()}
+          loading={detection.busy}
+        />
       )}
 
       <View style={styles.section}>
