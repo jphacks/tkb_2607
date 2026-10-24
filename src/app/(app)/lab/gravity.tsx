@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { SpaceBackground } from '@/components/space-background';
 import { getSampleHome } from '@/data';
 import { GravityView } from '@/features/gravity';
 
@@ -16,6 +17,7 @@ export default function GravityLabScreen() {
 
   return (
     <View style={styles.container}>
+      <SpaceBackground />
       <GravityView
         me={home.me}
         candidates={home.candidates}
