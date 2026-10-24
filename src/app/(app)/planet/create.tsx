@@ -1,21 +1,19 @@
 import { router } from 'expo-router';
 
-import { Screen } from '@/components/ui';
+import { PlanetCreateScreen } from '@/components/planet-create-screen';
 import { useSavePlanet } from '@/data';
-import { PlanetCreator } from '@/features/photo';
 
 export { RouteErrorBoundary as ErrorBoundary } from '@/components/route-error-boundary';
 
-export default function PlanetCreateScreen() {
+export default function PlanetCreateRoute() {
   const savePlanet = useSavePlanet();
   return (
-    <Screen>
-      <PlanetCreator
-        onComplete={async (result) => {
-          await savePlanet.mutateAsync(result);
-          router.back();
-        }}
-      />
-    </Screen>
+    <PlanetCreateScreen
+      back
+      onComplete={async (result) => {
+        await savePlanet.mutateAsync(result);
+        router.back();
+      }}
+    />
   );
 }

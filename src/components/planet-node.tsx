@@ -50,7 +50,7 @@ export function PlanetNode({
   );
 }
 
-function PlanetBody({ planet, size }: { planet: Planet | null; size: number }) {
+export function PlanetBody({ planet, size }: { planet: Planet | null; size: number }) {
   const circle = { width: size, height: size, borderRadius: size / 2 };
   return (
     <View style={[circle, { boxShadow: shadow.planet(size) }]}>
