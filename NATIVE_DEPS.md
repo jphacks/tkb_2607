@@ -10,11 +10,11 @@
 
 ## ビルドの履歴
 
-| 回  | 日付            | EAS プロファイル | 変更点                                             | 配布リンク                                                                                                    |
-| --- | --------------- | ---------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| 1   | 2026-10-22      | development      | 最初のビルド(下の一覧のすべて)                     | [ビルドページ](https://expo.dev/accounts/tuzuya/projects/perigee/builds/c6e5d94a-4c34-47b4-81e0-95ad5388ed6b) |
-| 2   | 2026-10-24      | development      | 切り抜き(`@six33/react-native-bg-removal`)         | [ビルドページ](https://expo.dev/accounts/tuzuya/projects/perigee/builds/9904fc4c-073f-4101-9115-54cea27d3ea4) |
-| 3   | 2026-10-24 予定 | development      | すれ違い検知(自作モジュール `modules/perigee-ble`) |                                                                                                               |
+| 回  | 日付       | EAS プロファイル | 変更点                                             | 配布リンク                                                                                                    |
+| --- | ---------- | ---------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| 1   | 2026-10-22 | development      | 最初のビルド(下の一覧のすべて)                     | [ビルドページ](https://expo.dev/accounts/tuzuya/projects/perigee/builds/c6e5d94a-4c34-47b4-81e0-95ad5388ed6b) |
+| 2   | 2026-10-24 | development      | 切り抜き(`@six33/react-native-bg-removal`)         | [ビルドページ](https://expo.dev/accounts/tuzuya/projects/perigee/builds/9904fc4c-073f-4101-9115-54cea27d3ea4) |
+| 3   | 2026-10-25 | development      | すれ違い検知(自作モジュール `modules/perigee-ble`) | [ビルドページ](https://expo.dev/accounts/tuzuya/projects/perigee/builds/b8732d32-3769-489d-ad24-b45cb224de80) |
 
 2回目のビルドは 2026-10-24 に作成済みで、依頼の締切(2026-10-23 正午)は過ぎました。ネイティブ部品を足したいときは、土台担当に相談してください(新しいビルドが必要になります)。
 
