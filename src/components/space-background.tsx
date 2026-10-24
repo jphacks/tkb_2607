@@ -1,17 +1,17 @@
-// ホームの宇宙背景(グラデーション・軌道の点線・星の飾り)。
-// Figma の B01｜宇宙ホームから、データで変わる部分(惑星・ラベル・衛星・ボタン)を除いて1枚の画像に書き出したもの。
-// 金属の星は Figma のシェーダー(Web 専用の描画)なので、書き出した結果をそのまま使っている。
+// 宇宙背景のうち、紫のグラデーションだけを描く(ズームしても動かない層)。
+// 軌道の点線と星の飾りは SpaceDecorLayer(置き場所の一覧は space-decorations.ts)で、この上に重ねる。
+// Figma: tuzuya ページ「B01｜宇宙ホーム 背景レイヤー(ズーム用)」の「背景 / グラデーション(固定)」
 import { Image } from 'expo-image';
 import { StyleSheet } from 'react-native';
 
 import { color } from '@/theme/tokens';
 
-const background = require('@/assets/images/home/space-background.png');
+const gradient = require('@/assets/images/home/space-gradient.png');
 
 export function SpaceBackground() {
   return (
     <Image
-      source={background}
+      source={gradient}
       style={[StyleSheet.absoluteFill, styles.image]}
       contentFit="cover"
       pointerEvents="none"
