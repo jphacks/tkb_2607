@@ -1,4 +1,6 @@
-// 【仮実装】土台が動作確認のために置いたもの。写真担当が中身を作り替える。
+// 惑星と衛星を作る画面の部品(土台の画面に差し込んで使う)。
+// - PlanetCreator:【仮実装】写真を縮小して色を取り出すだけ。水彩の惑星生成はまだ
+// - SatelliteCreator:Vision で被写体を切り抜く。切り抜けなければ円形のトリミング画面を出す
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';

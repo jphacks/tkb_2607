@@ -25,6 +25,12 @@ const MAX_SIZE = 512;
 /** トリミング画面で作る衛星の1辺(px) */
 export const CUTOUT_SIZE = 512;
 
+/** トリミング画面で拡大できる上限の倍率 */
+export const MAX_ZOOM = 5;
+
+/** トリミング画面で使う写真の、短い辺の上限(px) */
+const CROP_MAX_SHORT_SIDE = CUTOUT_SIZE * MAX_ZOOM;
+
 /** 元の写真のピクセルで表した、切り取る範囲 */
 export type CropRegion = ActionCrop['crop'];
 
@@ -171,15 +177,29 @@ export const cutoutSubject: CutoutSubject = async (photoUri) => {
 };
 
 /**
- * トリミング画面で使う写真を、元の大きさのまま読み込む。画面の表示と切り取りの計算を
- * 同じ画像(向きを直したあとの幅・高さ)でそろえるため。使い終わったら release() する
+ * トリミング画面で使う写真を読み込む。画面の表示と切り取りの計算を、同じ画像
+ * (向きを直したあとの幅・高さ)でそろえるため。使い終わったら release() する。
+ * 大きな写真はメモリを大きく使うので、短い辺を CROP_MAX_SHORT_SIDE px までに縮める。
+ * 拡大の上限(MAX_ZOOM 倍)でも切り取る範囲が CUTOUT_SIZE px を下回らない大きさなので、仕上がりは変わらない
  */
 export async function loadPhotoForCrop(photoUri: string): Promise<ImageRef> {
-  const loading = ImageManipulator.manipulate(photoUri);
+  const refs: { release(): void }[] = [];
   try {
-    return await loading.renderAsync();
+    const loading = ImageManipulator.manipulate(photoUri);
+    refs.push(loading);
+    const original = await loading.renderAsync();
+    if (Math.min(original.width, original.height) <= CROP_MAX_SHORT_SIDE) return original;
+    // 縮めたら、元の大きさの画像はすぐ解放する
+    refs.push(original);
+    const size =
+      original.width <= original.height
+        ? { width: CROP_MAX_SHORT_SIDE }
+        : { height: CROP_MAX_SHORT_SIDE };
+    const resizing = ImageManipulator.manipulate(original).resize(size);
+    refs.push(resizing);
+    return await resizing.renderAsync();
   } finally {
-    loading.release();
+    refs.reverse().forEach((ref) => ref.release());
   }
 }
 

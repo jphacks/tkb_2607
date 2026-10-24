@@ -20,6 +20,7 @@ import Animated, {
 
 import {
   CUTOUT_SIZE,
+  MAX_ZOOM,
   cropRegionToCirclePng,
   describeError,
   loadPhotoForCrop,
@@ -28,8 +29,6 @@ import {
 
 /** 丸い枠と画面の端のすき間(pt) */
 const FRAME_MARGIN = 24;
-/** 拡大できる上限の倍率 */
-const MAX_ZOOM = 5;
 
 type Size = { width: number; height: number };
 
