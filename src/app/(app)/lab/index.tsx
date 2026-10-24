@@ -20,6 +20,12 @@ const LINKS: { href: Href; title: string; description: string }[] = [
     description: '固定の見本データで GravityView を表示する。人数を変えて試せる',
   },
   {
+    href: '/lab/gravity-angular',
+    title: '角度の練習場',
+    description:
+      '惑星の角度の決め方(3案)を見比べる。30分ごとの距離の更新で角度が動かないかも試せる',
+  },
+  {
     href: '/lab/photo',
     title: '写真の練習場',
     description: '惑星・衛星づくりを試す。結果を見るだけで保存はしない',
