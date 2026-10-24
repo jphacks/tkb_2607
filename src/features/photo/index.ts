@@ -7,3 +7,4 @@ export type {
 } from './contract';
 export { cutoutSubject, generatePlanet } from './processing';
 export { PlanetCreator, SatelliteCreator } from './creators';
+export { PLANET_BODY_RATIO } from './planet-art';

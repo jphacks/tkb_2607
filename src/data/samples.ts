@@ -21,6 +21,7 @@ export function getSampleHome(count: number): HomeData {
     return {
       userId: `sample-${i + 1}`,
       nickname: round === 0 ? base.nickname : `${base.nickname}${round + 1}`,
+      organization: base.organization,
       planet: { imageUrl: null, palette: base.palette },
       featuredSatellites: [],
       sharedTagCount: shared,
@@ -35,6 +36,7 @@ export function getSampleHome(count: number): HomeData {
     me: {
       userId: ME_FIXTURE.id,
       nickname: ME_FIXTURE.nickname,
+      organization: ME_FIXTURE.organization,
       planet: { imageUrl: null, palette: ME_FIXTURE.palette },
       featuredSatellites: [],
     },

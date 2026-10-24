@@ -1,10 +1,11 @@
 // ホームに並ぶ惑星1つぶんの見た目(惑星・名前ラベル・自分の輪と衛星)。
 // 置く場所は決めない。呼び出し側が size × size の箱として配置する(ラベル・輪・衛星ははみ出して描く)。
 // Figma: Home フレームの「Watercolor planet surface」「User label」
-import { Canvas, Oval, Shadow } from '@shopify/react-native-skia';
+import { Canvas, Group, Oval, rect, Shadow } from '@shopify/react-native-skia';
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { PLANET_BODY_RATIO } from '@/features/photo';
 import { color, gradient, radius, shadow, space, typography } from '@/theme/tokens';
 import type { Planet, SatelliteSummary } from '@/types/domain';
 
@@ -29,10 +30,13 @@ export function PlanetNode({
   isMe = false,
   satellites = [],
 }: Props) {
+  const showRing = isMe && satellites.length > 0;
   return (
     <View style={{ width: size, height: size }}>
+      {/* 輪は衛星の軌道。衛星がないときは出さない。奥の半分は惑星の後ろ、手前の半分は前に描く */}
+      {showRing && <PlanetRing size={size} half="back" />}
       <PlanetBody planet={planet} size={size} />
-      {isMe && <PlanetRing size={size} />}
+      {showRing && <PlanetRing size={size} half="front" />}
       {isMe && <OrbitingSatellites satellites={satellites} size={size} />}
       {showLabel && (
         <View
@@ -52,13 +56,32 @@ export function PlanetNode({
 
 export function PlanetBody({ planet, size }: { planet: Planet | null; size: number }) {
   const circle = { width: size, height: size, borderRadius: size / 2 };
+  if (planet?.imageUrl) {
+    // 写真担当の惑星の画像は背景が透明で、輪や衛星が本体の外にはみ出す。丸く切らずに、
+    // 本体の直径が size になる大きさで中央に置く(陰影は画像に描き込み済み)
+    const imageSize = size / PLANET_BODY_RATIO;
+    const offset = (size - imageSize) / 2;
+    return (
+      <View style={{ width: size, height: size }}>
+        <View style={[StyleSheet.absoluteFill, circle, { boxShadow: shadow.planet(size) }]} />
+        <Image
+          source={{ uri: planet.imageUrl }}
+          contentFit="contain"
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            width: imageSize,
+            height: imageSize,
+            left: offset,
+            top: offset,
+          }}
+        />
+      </View>
+    );
+  }
   return (
     <View style={[circle, { boxShadow: shadow.planet(size) }]}>
-      {planet?.imageUrl ? (
-        <Image source={{ uri: planet.imageUrl }} style={circle} contentFit="cover" />
-      ) : (
-        <View style={[circle, { backgroundColor: planet?.palette[0] ?? color.bg.accentMuted }]} />
-      )}
+      <View style={[circle, { backgroundColor: planet?.palette[0] ?? color.bg.accentMuted }]} />
       <View style={[StyleSheet.absoluteFill, circle, gradient.planetShading]} />
     </View>
   );
@@ -68,32 +91,39 @@ export function PlanetBody({ planet, size }: { planet: Planet | null; size: numb
 const RING = { width: 1.565, height: 0.319, offsetX: -0.053, offsetY: 0.066, angle: '-22.52deg' };
 const RING_PADDING = 8; // 影がはみ出す分
 
-function PlanetRing({ size }: { size: number }) {
+/** half:back は輪の奥の半分(上側)、front は手前の半分(下側)だけを描く */
+function PlanetRing({ size, half }: { size: number; half: 'back' | 'front' }) {
   const w = size * RING.width;
   const h = size * RING.height;
+  const canvasW = w + RING_PADDING * 2;
+  const canvasH = h + RING_PADDING * 2;
+  const clip =
+    half === 'back' ? rect(0, 0, canvasW, canvasH / 2) : rect(0, canvasH / 2, canvasW, canvasH / 2);
   return (
     <Canvas
       pointerEvents="none"
       style={{
         position: 'absolute',
-        width: w + RING_PADDING * 2,
-        height: h + RING_PADDING * 2,
+        width: canvasW,
+        height: canvasH,
         left: size / 2 + size * RING.offsetX - w / 2 - RING_PADDING,
         top: size / 2 + size * RING.offsetY - h / 2 - RING_PADDING,
         transform: [{ rotate: RING.angle }],
       }}
     >
-      <Oval
-        x={RING_PADDING}
-        y={RING_PADDING}
-        width={w}
-        height={h}
-        style="stroke"
-        strokeWidth={1}
-        color={color.border.onImage}
-      >
-        <Shadow dx={0} dy={4} blur={2} color="rgba(0, 0, 0, 0.25)" />
-      </Oval>
+      <Group clip={clip}>
+        <Oval
+          x={RING_PADDING}
+          y={RING_PADDING}
+          width={w}
+          height={h}
+          style="stroke"
+          strokeWidth={1}
+          color={color.decor.planetRing}
+        >
+          <Shadow dx={0} dy={4} blur={2} color="rgba(0, 0, 0, 0.15)" />
+        </Oval>
+      </Group>
     </Canvas>
   );
 }

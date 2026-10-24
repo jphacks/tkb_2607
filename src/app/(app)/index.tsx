@@ -6,9 +6,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NearbyCountPill } from '@/components/nearby-count-pill';
 import { SpaceBackground } from '@/components/space-background';
+import { SpaceDecorLayer } from '@/components/space-decor-layer';
 import { ErrorText, Loading, PrimaryButton, Screen } from '@/components/ui';
 import { useHome, useSaveHomeAngles } from '@/data';
-import { GravityView } from '@/features/gravity';
+import { GravityView, MAX_VISIBLE_PLANETS } from '@/features/gravity';
 import { color, radius, space } from '@/theme/tokens';
 
 export { RouteErrorBoundary as ErrorBoundary } from '@/components/route-error-boundary';
@@ -19,7 +20,8 @@ const bellIcon = require('@/assets/images/home/bell-icon.png');
 // ホーム。引力の描画(GravityView)は引力・描画担当の差し込み口。背景・右上のボタン・左下のピルは土台が描く
 // Figma: tuzuya ページ「完成」セクションの B01｜宇宙ホーム
 export default function HomeScreen() {
-  const { data, error, refetch } = useHome(20);
+  // 顔ぶれは引力側が画面に出せる人数だけ選ぶ(左下の人数表示と、画面に出る惑星の数がそろう)
+  const { data, error, refetch } = useHome(MAX_VISIBLE_PLANETS);
   const insets = useSafeAreaInsets();
   const saveAngles = useSaveHomeAngles();
   // 同じ週の角度は1回だけ保存する(保存に失敗して取り直しても、何度も送らないように)
@@ -39,6 +41,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <SpaceBackground />
+      <SpaceDecorLayer />
       <GravityView
         me={data.me}
         candidates={data.candidates}

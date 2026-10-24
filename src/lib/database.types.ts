@@ -215,6 +215,7 @@ export type Database = {
           id: string;
           is_dummy: boolean;
           nickname: string;
+          organization: string | null;
           sound_id: string | null;
           sound_path: string | null;
         };
@@ -226,6 +227,7 @@ export type Database = {
           id: string;
           is_dummy?: boolean;
           nickname?: string;
+          organization?: string | null;
           sound_id?: string | null;
           sound_path?: string | null;
         };
@@ -237,6 +239,7 @@ export type Database = {
           id?: string;
           is_dummy?: boolean;
           nickname?: string;
+          organization?: string | null;
           sound_id?: string | null;
           sound_path?: string | null;
         };
@@ -342,6 +345,7 @@ export type Database = {
           last_encounter_at: string;
           lineup_period_start: string;
           nickname: string;
+          organization: string;
           palette: Json;
           planet_image_path: string;
           shared_tag_count: number;

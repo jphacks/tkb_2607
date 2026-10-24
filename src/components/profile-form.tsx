@@ -1,5 +1,5 @@
 // プロフィールの入力欄(初回設定とプロフィール画面で共用)。Figma: プロフィール登録
-// 「所属団体」は引力担当が進めているので、ここにはまだ置かない。生年月日の代わりに年代を選ぶ
+// 所属団体は引力の計算(組織のマッチング)に使う。生年月日の代わりに年代を選ぶ
 import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
@@ -22,6 +22,7 @@ export function ProfileForm({
   const update = useUpdateMyProfile();
   const [nickname, setNickname] = useState(profile?.nickname ?? '');
   const [realName, setRealName] = useState(profile?.realName ?? '');
+  const [organization, setOrganization] = useState(profile?.organization ?? '');
   const [tags, setTags] = useState<string[]>(profile?.tags.map((t) => t.name) ?? []);
   const [tagInput, setTagInput] = useState('');
   const [ageGroup, setAgeGroup] = useState<AgeGroup | null>(profile?.ageGroup ?? null);
@@ -40,6 +41,7 @@ export function ProfileForm({
       {
         nickname: nickname.trim(),
         realName: realName.trim() || null,
+        organization: organization.trim() || null,
         tagNames: tags,
         ageGroup,
         gender,
@@ -59,7 +61,7 @@ export function ProfileForm({
       <Section label="ニックネーム" note="(みんなに表示されます)">
         <Input value={nickname} onChangeText={setNickname} placeholder="Koyu" />
       </Section>
-      <Section label="タグ" note="(大学名・サークル名・職場など)">
+      <Section label="タグ" note="(興味・サークル名など)">
         <Input
           value={tagInput}
           onChangeText={setTagInput}
@@ -86,6 +88,9 @@ export function ProfileForm({
             ))}
           </View>
         )}
+      </Section>
+      <Section label="所属団体" note="(大学名・会社名など。正式名称で)">
+        <Input value={organization} onChangeText={setOrganization} placeholder="例:〇〇大学" />
       </Section>
       <Section label="年代">
         <Radios options={AGE_GROUPS} value={ageGroup} onChange={setAgeGroup} />
