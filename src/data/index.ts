@@ -8,6 +8,7 @@ import type {
   EncounterReport,
   HomeData,
   SavePlanetInput,
+  SoundId,
   UpdateProfileInput,
   UpdateSatelliteInput,
   UserId,
@@ -30,6 +31,7 @@ export const queryKeys = {
   mySatellites: (userId: UserId | undefined) => ['mySatellites', userId] as const,
   tagSearch: (query: string) => ['tagSearch', query] as const,
   dummyUsers: (userId: UserId | undefined) => ['dummyUsers', userId] as const,
+  pins: (userId: UserId | undefined) => ['pins', userId] as const,
 };
 
 const invalidate = (...keys: string[]) =>
@@ -55,7 +57,14 @@ export function useMyProfile() {
 export function useUpdateMyProfile() {
   return useMutation({
     mutationFn: (input: UpdateProfileInput) => source.updateMyProfile(input),
-    onSuccess: () => invalidate('myProfile', 'home', 'planetDetail'),
+    onSuccess: () => invalidate('myProfile', 'home', 'planetDetail', 'pins'),
+  });
+}
+
+export function useUpdateMySound() {
+  return useMutation({
+    mutationFn: (soundId: SoundId | null) => source.updateMySound(soundId),
+    onSuccess: () => invalidate('myProfile', 'planetDetail', 'pins'),
   });
 }
 
@@ -149,6 +158,26 @@ export function usePlanetDetail(userId: UserId) {
   return useQuery({
     queryKey: queryKeys.planetDetail(userId),
     queryFn: () => source.getPlanetDetail(userId),
+  });
+}
+
+// ---------- ピン止め ----------
+
+export function usePins() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: queryKeys.pins(user?.id),
+    queryFn: () => source.listPins(),
+    enabled: !!user,
+  });
+}
+
+/** pinned: true でピン止め、false で外す */
+export function useSetPinned() {
+  return useMutation({
+    mutationFn: ({ userId, pinned }: { userId: UserId; pinned: boolean }) =>
+      pinned ? source.pin(userId) : source.unpin(userId),
+    onSuccess: () => invalidate('pins', 'planetDetail'),
   });
 }
 

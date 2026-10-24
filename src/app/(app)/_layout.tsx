@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 
-import { ErrorText, Loading, PrimaryButton, Screen } from '@/components/ui';
+import { Splash } from '@/components/splash';
+import { ErrorText, PrimaryButton, Screen } from '@/components/ui';
 import { useMyProfile } from '@/data';
 import { useEncounterDetection } from '@/features/encounter';
 
@@ -8,7 +9,7 @@ export default function AppLayout() {
   const { data: profile, isLoading, error, refetch } = useMyProfile();
   // 惑星まで作り終えた人だけ、すれ違い検知を動かす(相手のホームに出られるのは惑星がある人だけ)
   useEncounterDetection(!!profile && profile.nickname !== '' && profile.planet !== null);
-  if (isLoading) return <Loading />;
+  if (isLoading) return <Splash />;
   if (!profile) {
     return (
       <Screen>
@@ -26,23 +27,21 @@ export default function AppLayout() {
   return (
     <Stack>
       <Stack.Protected guard={needsProfile}>
-        <Stack.Screen
-          name="setup/profile"
-          options={{ title: 'プロフィール', headerBackVisible: false }}
-        />
+        <Stack.Screen name="setup/profile" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Protected guard={needsPlanet}>
-        <Stack.Screen
-          name="setup/planet"
-          options={{ title: '惑星をつくる', headerBackVisible: false }}
-        />
+        <Stack.Screen name="setup/planet" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Protected guard={ready}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="profile" options={{ title: 'プロフィール' }} />
-        <Stack.Screen name="satellites" options={{ title: '衛星' }} />
-        <Stack.Screen name="planet/create" options={{ title: '惑星をつくりなおす' }} />
-        <Stack.Screen name="planet/[userId]" options={{ title: '惑星' }} />
+        {/* ここから下の画面は、宇宙の背景の画面に自前のヘッダー(← Back)を描く */}
+        <Stack.Screen name="profile" options={{ headerShown: false }} />
+        <Stack.Screen name="satellites" options={{ headerShown: false }} />
+        <Stack.Screen name="satellites/add" options={{ headerShown: false }} />
+        <Stack.Screen name="planet/create" options={{ headerShown: false }} />
+        <Stack.Screen name="planet/[userId]" options={{ headerShown: false }} />
+        <Stack.Screen name="sound" options={{ headerShown: false }} />
+        <Stack.Screen name="pins" options={{ headerShown: false }} />
         <Stack.Screen name="debug" options={{ title: 'デバッグ' }} />
         <Stack.Screen name="lab/index" options={{ title: '動作確認ラボ' }} />
         <Stack.Screen name="lab/native" options={{ title: 'ネイティブ部品チェック' }} />

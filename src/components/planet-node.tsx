@@ -54,7 +54,7 @@ export function PlanetNode({
   );
 }
 
-function PlanetBody({ planet, size }: { planet: Planet | null; size: number }) {
+export function PlanetBody({ planet, size }: { planet: Planet | null; size: number }) {
   const circle = { width: size, height: size, borderRadius: size / 2 };
   if (planet?.imageUrl) {
     // 写真担当の惑星の画像は背景が透明で、輪や衛星が本体の外にはみ出す。丸く切らずに、
