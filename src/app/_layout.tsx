@@ -1,8 +1,10 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { preloadSpaceAssets } from '@/components/space-assets';
 import { Loading } from '@/components/ui';
 import { AuthProvider, queryClient, useAuth } from '@/data';
 import { appFonts } from '@/theme/fonts';
@@ -30,7 +32,12 @@ function RootNavigator() {
 export default function RootLayout() {
   // フォントの読み込みに失敗したときは、端末の標準フォントで表示を続ける
   const [fontsLoaded, fontError] = useFonts(appFonts);
-  if (!fontsLoaded && !fontError) return <Loading />;
+  // 宇宙背景の画像も先に読み込む(ホームで、紫だけが出て後から星が出るのを防ぐ)。失敗しても先へ進む
+  const [spaceReady, setSpaceReady] = useState(false);
+  useEffect(() => {
+    preloadSpaceAssets().finally(() => setSpaceReady(true));
+  }, []);
+  if ((!fontsLoaded && !fontError) || !spaceReady) return <Loading />;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

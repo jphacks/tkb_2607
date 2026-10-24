@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NearbyCountPill } from '@/components/nearby-count-pill';
 import { SpaceBackground } from '@/components/space-background';
+import { SpaceDecorLayer } from '@/components/space-decor-layer';
 import { ErrorText, Loading, PrimaryButton, Screen } from '@/components/ui';
 import { useHome, useSaveHomeAngles } from '@/data';
 import { GravityView, MAX_VISIBLE_PLANETS } from '@/features/gravity';
@@ -40,6 +41,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <SpaceBackground />
+      <SpaceDecorLayer />
       <GravityView
         me={data.me}
         candidates={data.candidates}
