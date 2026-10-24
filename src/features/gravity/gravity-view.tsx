@@ -2,8 +2,11 @@
 // ここは座標変換と描画のみを担当する。惑星1つぶんの見た目は土台の PlanetNode を使う。
 // 位置はデザイン上の座標(home-layout.ts の DESIGN_FRAME)で計算し、背景画像と同じ倍率で画面の座標に直す。
 // そのため、画面の大きさが変わっても半径・角度(論理的な配置)は変わらない。
-import { useEffect, useRef, useState } from 'react';
+// ズーム・パンは、その上から画面全体にかける変形(use-viewport.ts)だけで行い、配置の計算には触れない。
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
+import Animated, { type SharedValue } from 'react-native-reanimated';
 
 import { PlanetNode } from '@/components/planet-node';
 import type { UserId } from '@/types/domain';
@@ -14,10 +17,17 @@ import { DESIGN_FRAME, fitDesign, ME_SLOT } from './home-layout';
 import { calculateMaxRadius, mapStrengthToRadius } from './radius';
 import { calculateStrengths } from './scoring';
 import { useFrozenAngles } from './use-frozen-angles';
+import { usePlanetCounterScaleStyle, useViewport } from './use-viewport';
 
 const PLANET_SIZE = GRAVITY_CONFIG.layout.planetSize;
 /** 自分の惑星(ME_SLOT)から、デザインの画面の端までに収まる最大半径 */
 const MAX_RADIUS = calculateMaxRadius(ME_SLOT, DESIGN_FRAME);
+
+/** 惑星1つぶんの箱。画面全体を拡大しても、惑星の見た目の大きさは上限・下限の範囲にとどめる */
+function ZoomCompensated({ zoom, children }: { zoom: SharedValue<number>; children: ReactNode }) {
+  const style = usePlanetCounterScaleStyle(zoom);
+  return <Animated.View style={style}>{children}</Animated.View>;
+}
 
 type Props = GravityViewProps & {
   /** 角度の決め方。練習場で見比べるためのもの(契約外)。省略時は config.ts の値 */
@@ -37,6 +47,7 @@ export function GravityView({
   const [area, setArea] = useState<{ width: number; height: number } | null>(null);
   const { width, height } = area ?? windowSize;
   const { scale, offsetX, offsetY } = fitDesign(width, height);
+  const viewport = useViewport();
 
   // 顔ぶれは週1回選んだときの関係の強さの順に並んでいるので、先頭から出す(週の途中で出る人が変わらない)
   const visible = candidates.slice(0, GRAVITY_CONFIG.maxVisiblePlanets);
@@ -67,49 +78,59 @@ export function GravityView({
   const mePos = toScreen(ME_SLOT.x, ME_SLOT.y, ME_SLOT.size);
 
   return (
-    <View
-      style={styles.space}
-      onLayout={(e) =>
-        setArea({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })
-      }
-    >
-      {visible.map((c) => {
-        const r = radii.get(c.userId) ?? MAX_RADIUS;
-        // 保存済みの角度にいない人(念のため)は、その場で計算した角度を使う
-        const angle = savedAngles?.get(c.userId) ?? computedAngles.get(c.userId) ?? 0;
-        const { size, left, top } = toScreen(
-          ME_SLOT.x + r * Math.cos(angle),
-          ME_SLOT.y + r * Math.sin(angle),
-          PLANET_SIZE,
-        );
-        return (
-          <Pressable
-            key={c.userId}
-            onPress={() => onPressPlanet(c.userId)}
-            style={[styles.planet, { left, top }]}
-          >
-            <PlanetNode
-              planet={c.planet}
-              size={size}
-              label={c.nickname}
-              showLabel={c.encounterCount >= GRAVITY_CONFIG.labelMinEncounters}
-            />
-          </Pressable>
-        );
-      })}
-      <Pressable
-        onPress={() => onPressPlanet(me.userId)}
-        style={[styles.planet, { left: mePos.left, top: mePos.top }]}
+    <GestureDetector gesture={viewport.gesture}>
+      <View
+        style={styles.space}
+        onLayout={(e) => {
+          const { width: w, height: h } = e.nativeEvent.layout;
+          setArea({ width: w, height: h });
+          viewport.setViewportSize(w, h);
+        }}
       >
-        <PlanetNode
-          planet={me.planet}
-          size={mePos.size}
-          label="You"
-          isMe
-          satellites={me.featuredSatellites}
-        />
-      </Pressable>
-    </View>
+        <Animated.View style={[StyleSheet.absoluteFill, viewport.contentStyle]}>
+          {visible.map((c) => {
+            const r = radii.get(c.userId) ?? MAX_RADIUS;
+            // 保存済みの角度にいない人(念のため)は、その場で計算した角度を使う
+            const angle = savedAngles?.get(c.userId) ?? computedAngles.get(c.userId) ?? 0;
+            const { size, left, top } = toScreen(
+              ME_SLOT.x + r * Math.cos(angle),
+              ME_SLOT.y + r * Math.sin(angle),
+              PLANET_SIZE,
+            );
+            return (
+              <Pressable
+                key={c.userId}
+                onPress={() => onPressPlanet(c.userId)}
+                style={[styles.planet, { left, top }]}
+              >
+                <ZoomCompensated zoom={viewport.zoom}>
+                  <PlanetNode
+                    planet={c.planet}
+                    size={size}
+                    label={c.nickname}
+                    showLabel={c.encounterCount >= GRAVITY_CONFIG.labelMinEncounters}
+                  />
+                </ZoomCompensated>
+              </Pressable>
+            );
+          })}
+          <Pressable
+            onPress={() => onPressPlanet(me.userId)}
+            style={[styles.planet, { left: mePos.left, top: mePos.top }]}
+          >
+            <ZoomCompensated zoom={viewport.zoom}>
+              <PlanetNode
+                planet={me.planet}
+                size={mePos.size}
+                label="You"
+                isMe
+                satellites={me.featuredSatellites}
+              />
+            </ZoomCompensated>
+          </Pressable>
+        </Animated.View>
+      </View>
+    </GestureDetector>
   );
 }
 

@@ -30,6 +30,16 @@ export const GRAVITY_CONFIG = {
    */
   maxVisiblePlanets: 13,
 
+  /** ズーム・パン(viewport.ts)。拡大率は「背景画像に合わせた等倍」を 1 とする */
+  viewport: {
+    /** 拡大率の範囲 */
+    minZoom: 1,
+    maxZoom: 3,
+    /** 惑星の見た目の拡大率はこの範囲にとどめる(超えた分は惑星の間だけが広がる) */
+    planetZoomMin: 1,
+    planetZoomMax: 1.6,
+  },
+
   /**
    * 惑星・半径まわりの見た目のパラメータ。長さはすべてデザイン上の px(home-layout.ts の DESIGN_FRAME 基準)。
    * 画面には、背景画像と同じ倍率で拡大・縮小して描く。自分の惑星の大きさは home-layout.ts の ME_SLOT を使う
