@@ -5,6 +5,7 @@ import { Canvas, Oval, Shadow } from '@shopify/react-native-skia';
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { PLANET_BODY_RATIO } from '@/features/photo';
 import { color, gradient, radius, shadow, space, typography } from '@/theme/tokens';
 import type { Planet, SatelliteSummary } from '@/types/domain';
 
@@ -52,13 +53,32 @@ export function PlanetNode({
 
 function PlanetBody({ planet, size }: { planet: Planet | null; size: number }) {
   const circle = { width: size, height: size, borderRadius: size / 2 };
+  if (planet?.imageUrl) {
+    // 写真担当の惑星の画像は背景が透明で、輪や衛星が本体の外にはみ出す。丸く切らずに、
+    // 本体の直径が size になる大きさで中央に置く(陰影は画像に描き込み済み)
+    const imageSize = size / PLANET_BODY_RATIO;
+    const offset = (size - imageSize) / 2;
+    return (
+      <View style={{ width: size, height: size }}>
+        <View style={[StyleSheet.absoluteFill, circle, { boxShadow: shadow.planet(size) }]} />
+        <Image
+          source={{ uri: planet.imageUrl }}
+          contentFit="contain"
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            width: imageSize,
+            height: imageSize,
+            left: offset,
+            top: offset,
+          }}
+        />
+      </View>
+    );
+  }
   return (
     <View style={[circle, { boxShadow: shadow.planet(size) }]}>
-      {planet?.imageUrl ? (
-        <Image source={{ uri: planet.imageUrl }} style={circle} contentFit="cover" />
-      ) : (
-        <View style={[circle, { backgroundColor: planet?.palette[0] ?? color.bg.accentMuted }]} />
-      )}
+      <View style={[circle, { backgroundColor: planet?.palette[0] ?? color.bg.accentMuted }]} />
       <View style={[StyleSheet.absoluteFill, circle, gradient.planetShading]} />
     </View>
   );
