@@ -47,6 +47,8 @@ export interface DataSource {
 
   // ホーム・詳細
   getHome(limit: number): Promise<HomeData>;
+  /** その週の角度を保存する。先に保存されていた・週が変わっていたら false */
+  saveHomeAngles(periodStart: string, angles: ReadonlyMap<UserId, number>): Promise<boolean>;
   getPlanetDetail(userId: UserId): Promise<PlanetDetail>;
 
   // すれ違い
@@ -56,6 +58,8 @@ export interface DataSource {
   // デモ
   listDummyUsers(): Promise<DummyUser[]>;
   demoAddEncounter(targetUserId: UserId): Promise<void>;
+  /** 自分の顔ぶれを捨てる。次にホームを開いたときに選び直される(角度も計算し直し) */
+  demoResetHomeLineup(): Promise<void>;
 }
 
 /** ホームで1つの惑星の周りに出す衛星の上限 */

@@ -6,6 +6,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
   AddSatelliteInput,
   EncounterReport,
+  HomeData,
   SavePlanetInput,
   UpdateProfileInput,
   UpdateSatelliteInput,
@@ -108,12 +109,39 @@ export function useDeleteSatellite() {
 
 // ---------- ホーム・詳細 ----------
 
+/** ホームの半径(すれ違い回数など)を取り直す間隔。顔ぶれと角度はサーバー側で週に1回だけ変わる */
+export const HOME_REFRESH_MS = 30 * 60 * 1000;
+
 export function useHome(limit = 20) {
   const { user } = useAuth();
   return useQuery({
     queryKey: queryKeys.home(user?.id, limit),
     queryFn: () => source.getHome(limit),
     enabled: !!user,
+    staleTime: HOME_REFRESH_MS,
+    refetchInterval: HOME_REFRESH_MS,
+  });
+}
+
+/** その週に初めて計算した角度を保存する。保存できなかった(先に保存されていた)ら、保存済みの角度を取り直す */
+export function useSaveHomeAngles() {
+  return useMutation({
+    mutationFn: ({
+      periodStart,
+      angles,
+    }: {
+      periodStart: string;
+      angles: ReadonlyMap<UserId, number>;
+    }) => source.saveHomeAngles(periodStart, angles),
+    onSuccess: (saved, { periodStart, angles }) => {
+      if (!saved) return invalidate('home');
+      // 次の取り直し(30分後)を待たずに、手元のデータも保存済みにする
+      queryClient.setQueriesData<HomeData>({ queryKey: ['home'] }, (old) =>
+        old && old.lineup.periodStart === periodStart
+          ? { ...old, lineup: { ...old.lineup, angles } }
+          : old,
+      );
+    },
   });
 }
 
@@ -130,7 +158,8 @@ export const getBleToken = () => source.getBleToken();
 
 export async function reportEncounter(report: EncounterReport) {
   const result = await source.reportEncounter(report);
-  if (result.recorded) await invalidate('home', 'dummyUsers');
+  // ホームの半径は30分ごとに取り直す(useHome)ので、ここではホームを取り直さない
+  if (result.recorded) await invalidate('dummyUsers');
   return result;
 }
 
@@ -149,5 +178,12 @@ export function useDemoAddEncounter() {
   return useMutation({
     mutationFn: (targetUserId: UserId) => source.demoAddEncounter(targetUserId),
     onSuccess: () => invalidate('home', 'dummyUsers'),
+  });
+}
+
+export function useDemoResetHomeLineup() {
+  return useMutation({
+    mutationFn: () => source.demoResetHomeLineup(),
+    onSuccess: () => invalidate('home'),
   });
 }

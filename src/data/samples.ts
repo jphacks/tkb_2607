@@ -39,5 +39,6 @@ export function getSampleHome(count: number): HomeData {
       featuredSatellites: [],
     },
     candidates,
+    lineup: { periodStart: '2026-10-18T15:00:00.000Z', angles: null },
   };
 }
