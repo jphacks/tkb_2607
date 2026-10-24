@@ -130,7 +130,7 @@ function padToSquarePng(uri: string): Promise<string> {
 }
 
 // 画面なしで呼ぶ用(デモ用ダミーの作成にも使う)。
-// 写真から色を取り出し、写真の雰囲気で種類と形を決めて、水彩で惑星を1つ描く
+// 写真から色を取り出し、写真の雰囲気で種類を決めて、水彩で惑星を1つ描く
 export const generatePlanet: GeneratePlanet = async (photoUri) => {
   const palette = await extractPlanetPalette(photoUri);
   const traits = decidePlanetTraits(palette);

@@ -14,7 +14,7 @@ export type BrushOptions = {
  * 実際の塗り方(にじみ・かすれ・粉っぽさ)はこの道具が担当する
  */
 export type PlanetBrush = {
-  /** 下地(紙)を area に塗る。本体・輪・衛星それぞれで最初に1回呼ばれる */
+  /** 下地(紙)を area に塗る。本体を塗るとき最初に1回呼ばれる */
   ground(area: SkPath): void;
   /** path の形を color で塗る */
   fill(path: SkPath, color: string, options?: BrushOptions): void;

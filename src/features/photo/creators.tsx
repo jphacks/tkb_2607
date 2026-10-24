@@ -35,14 +35,19 @@ async function pickPhoto(): Promise<string | null> {
 type PlanetDraft = {
   sourcePhotoUri: string;
   palette: string[];
-  /** 写真の雰囲気から決めた種類と形。作り直しても変えない */
+  /** 写真の雰囲気から決めた種類。作り直しても変えない */
   traits: PlanetTraits;
   candidates: PlanetCandidate[];
   /** 「この惑星にする」で土台に渡した画像。土台が使うので、作り直しても消さない */
   savedImageUri: string | null;
 };
 
-// 惑星づくり:写真を選ぶ → 色を取り出し、雰囲気から種類と形を決める
+/** draft の候補の画像のうち、土台に渡していないもの(使わなくなったら消してよいもの) */
+function unsavedImages(draft: PlanetDraft): string[] {
+  return draft.candidates.map((c) => c.imageUri).filter((uri) => uri !== draft.savedImageUri);
+}
+
+// 惑星づくり:写真を選ぶ → 色を取り出し、雰囲気から種類を決める
 // → 画風の違う候補(水彩・クレヨン・パステル)を横に並べる(描けたものから順に出す) → 1つ選んで決める
 export function PlanetCreator({ onComplete }: PlanetCreatorProps) {
   const [busy, setBusy] = useState(false);
@@ -54,17 +59,29 @@ export function PlanetCreator({ onComplete }: PlanetCreatorProps) {
   const showProgress = (candidates: PlanetCandidate[]) =>
     setDraft((current) => current && { ...current, candidates });
 
+  // 前の写真の候補は、新しい候補が全部描けてから消す。途中で失敗したら、前の候補に戻す
   const choose = async () => {
     const uri = await pickPhoto();
     if (!uri) return;
+    const previous = draft;
+    const previousStyleId = selectedStyleId;
+    /** 今回描けた候補(失敗したときに消す) */
+    let drawn: PlanetCandidate[] = [];
     setBusy(true);
     try {
       const palette = await extractPlanetPalette(uri);
       const traits = decidePlanetTraits(palette);
       setDraft({ sourcePhotoUri: uri, palette, traits, candidates: [], savedImageUri: null });
       setSelectedStyleId(DEFAULT_PLANET_STYLE_ID);
-      await createPlanetCandidates(palette, traits, newPlanetSeed(), showProgress);
+      await createPlanetCandidates(palette, traits, newPlanetSeed(), (candidates) => {
+        drawn = candidates;
+        showProgress(candidates);
+      });
+      if (previous) deleteCachedFiles(unsavedImages(previous));
     } catch (e) {
+      deleteCachedFiles(drawn.map((c) => c.imageUri));
+      setDraft(previous);
+      setSelectedStyleId(previousStyleId);
       Alert.alert('惑星を作れませんでした', describeError(e));
     } finally {
       setBusy(false);
@@ -74,14 +91,18 @@ export function PlanetCreator({ onComplete }: PlanetCreatorProps) {
   // 同じ色・同じ種類・同じ画風のまま、模様だけ変えて作り直す。前の候補は使わないので消す
   const remake = async () => {
     if (!draft) return;
+    /** 今回描けた候補(失敗したときに消す) */
+    let drawn: PlanetCandidate[] = [];
     setBusy(true);
     try {
-      await createPlanetCandidates(draft.palette, draft.traits, newPlanetSeed(), showProgress);
-      deleteCachedFiles(
-        draft.candidates.map((c) => c.imageUri).filter((uri) => uri !== draft.savedImageUri),
-      );
+      await createPlanetCandidates(draft.palette, draft.traits, newPlanetSeed(), (candidates) => {
+        drawn = candidates;
+        showProgress(candidates);
+      });
+      deleteCachedFiles(unsavedImages(draft));
     } catch (e) {
-      // 作り直せなかったときは、前の候補に戻す(前の候補の画像はまだ消していない)
+      // 作り直せなかったときは、途中まで描けた候補を消し、前の候補に戻す(前の候補の画像はまだ消していない)
+      deleteCachedFiles(drawn.map((c) => c.imageUri));
       setDraft(draft);
       Alert.alert('惑星を作り直せませんでした', describeError(e));
     } finally {

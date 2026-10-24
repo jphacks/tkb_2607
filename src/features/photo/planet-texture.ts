@@ -215,6 +215,7 @@ function getGradientMapEffect(): SkRuntimeEffect {
 
 /**
  * テクスチャに palette の色を割り当てて、(cx, cy) を中心とする半径 r の本体に描く。
+ * cover:テクスチャで必ず覆う範囲の半径(ふちのがたつき・にじみで r より外に出る分を含める)。
  * random で、回転・反転・拡大(テクスチャの一部を使う)・位置のずれを変える
  */
 export function drawTexturedBody(
@@ -225,13 +226,15 @@ export function drawTexturedBody(
   cx: number,
   cy: number,
   r: number,
+  cover: number,
   random: () => number,
 ) {
-  const zoom = between(random, ZOOM[0], ZOOM[1]);
+  // テクスチャの惑星の円(半径 r × zoom)が、cover の円を覆える大きさより小さくならないようにする
+  const zoom = Math.max(between(random, ZOOM[0], ZOOM[1]), cover / r);
   const angle = random() * 360;
   const flip = random() < 0.5 ? -1 : 1;
-  // 拡大した分だけなら、位置をずらしても本体の中にテクスチャの外(背景)が入らない
-  const shift = randomPointInCircle(random, 0, 0, (zoom - 1) * r * 0.9);
+  // 覆う範囲より大きい分だけなら、位置をずらしても cover の中にテクスチャの外(背景)が入らない
+  const shift = randomPointInCircle(random, 0, 0, (zoom * r - cover) * 0.9);
   const scale = (r * 2 * zoom) / TEXTURE_SIZE;
 
   // 暗い色から明るい色の順に並べ、4 色に満たなければ最後の色をくり返す

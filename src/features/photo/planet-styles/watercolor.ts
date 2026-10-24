@@ -1,5 +1,5 @@
 // 水彩:本体の土台は、水彩のテクスチャに写真の色を割り当てて塗る(planet-texture.ts)。
-// その上に重ねる模様や輪・衛星は、ぬれた紙ににじんだような色の塊で塗る。紙のざらつきと、細かい金色の点。
+// その上に重ねる模様は、ぬれた紙ににじんだような色の塊で塗る。紙のざらつきと、細かい金色の点。
 import { BlendMode } from '@shopify/react-native-skia';
 
 import { darken, lighten, lightestColor, luminance } from '../colors';

@@ -1,8 +1,7 @@
 // 惑星の画像を描く。画面には出さずに Skia のキャンバスに描き、背景が透明な PNG にする。
-// 重ねる順:輪の奥側 → 本体 → 輪の手前側 → 衛星
+// 描くのは本体だけ(輪や衛星は描かない。ホームの輪と衛星は土台の部品が描く)
 import {
   BlendMode,
-  ClipOp,
   FillType,
   ImageFormat,
   Skia,
@@ -12,11 +11,8 @@ import {
   type SkPath,
 } from '@shopify/react-native-skia';
 
-import { darken, varyColor } from './colors';
 import { savePngToCache } from './files';
 import {
-  between,
-  blobPath,
   circlePath,
   clipped,
   createRandom,
@@ -33,28 +29,11 @@ import { getPlanetType } from './planet-types';
 /** 惑星の画像の1辺(px) */
 export const PLANET_SIZE = 512;
 
-/** 本体の半径(キャンバスに対する割合)。輪や衛星がはみ出して切れないよう、小さめにして余白を残す */
-const BODY_RADIUS = 0.35;
+/** 本体の半径(キャンバスに対する割合)。クレヨンのがたつきや水彩のにじみがはみ出さない余白だけ残す */
+const BODY_RADIUS = 0.47;
 
 /** 本体の直径が、惑星の画像の1辺に対してどれだけか。表示する側は、本体を size にしたいなら画像を size / この値 で描く */
 export const PLANET_BODY_RATIO = BODY_RADIUS * 2;
-
-/** 輪の形(本体の半径に対する割合)。輪が切れないよう、外側の端がキャンバスに収まる大きさにしてある */
-const RING = {
-  inner: 1.16,
-  outer: 1.38,
-  /** 縦のつぶれ具合(横の半径に対する縦の半径) */
-  flatten: 0.3,
-  /** 傾き(度) */
-  tilt: -16,
-};
-
-/** 衛星の大きさと置き場所(本体の半径に対する割合)。輪とぶつかりにくい、右上と左下に置く */
-const MOON = {
-  radius: [0.1, 0.15],
-  distance: 1.2,
-  angles: [-70, 120],
-};
 
 export type PlanetCandidate = {
   styleId: string;
@@ -128,78 +107,7 @@ function offscreen(track: Track, size: number, draw: (canvas: SkCanvas) => void)
   return track(surface.makeImageSnapshot());
 }
 
-/** 輪を、別のキャンバスに1回だけ描いて画像にする(奥側と手前側で模様がずれないように) */
-function renderRing(
-  track: Track,
-  style: PlanetStyle,
-  palette: string[],
-  seed: number,
-  cx: number,
-  cy: number,
-  r: number,
-): SkImage {
-  return offscreen(track, PLANET_SIZE, (canvas) => {
-    const brush = style.createBrush(canvas, PLANET_SIZE, palette, seed + 101, track);
-    const random = createRandom(seed + 102);
-    const ellipse = (scale: number) =>
-      Skia.XYWHRect(
-        cx - r * scale,
-        cy - r * scale * RING.flatten,
-        r * scale * 2,
-        r * scale * 2 * RING.flatten,
-      );
-    const band = (from: number, to: number) =>
-      track(
-        Skia.PathBuilder.Make()
-          .addOval(ellipse(to))
-          .addOval(ellipse(from))
-          .setFillType(FillType.EvenOdd)
-          .build(),
-      );
-
-    canvas.save();
-    canvas.rotate(RING.tilt, cx, cy);
-    const ring = band(RING.inner, RING.outer);
-    clipped(canvas, ring, () => {
-      brush.ground(ring);
-      brush.fill(ring, varyColor(palette[1 % palette.length], random, 0.1));
-      // 内側に、色の違う細い輪を重ねる
-      const middle = (RING.inner + RING.outer) / 2;
-      brush.fill(band(RING.inner, middle), varyColor(palette[2 % palette.length], random, 0.1), {
-        alpha: 0.7,
-      });
-      brush.texture(ring);
-      shadeShape(canvas, track, style, brush, ring, cx, cy, r * RING.outer);
-    });
-    canvas.restore();
-  });
-}
-
-/** 輪の画像の、奥側(half = 'back')か手前側('front')だけを貼る */
-function drawRingHalf(
-  canvas: SkCanvas,
-  ring: SkImage,
-  half: 'back' | 'front',
-  cx: number,
-  cy: number,
-) {
-  canvas.save();
-  // 輪と同じだけ傾けて、輪の中心を通る線で上下に分ける
-  canvas.rotate(RING.tilt, cx, cy);
-  const big = PLANET_SIZE * 2;
-  canvas.clipRect(
-    half === 'back'
-      ? Skia.XYWHRect(cx - big, cy - big, big * 2, big)
-      : Skia.XYWHRect(cx - big, cy, big * 2, big),
-    ClipOp.Intersect,
-    true,
-  );
-  canvas.rotate(-RING.tilt, cx, cy);
-  canvas.drawImage(ring, 0, 0);
-  canvas.restore();
-}
-
-/** palette の色・traits の種類と形・styleId の画風で惑星を描き、PNG をキャッシュに保存して URI を返す */
+/** palette の色・traits の種類・styleId の画風で惑星を描き、PNG をキャッシュに保存して URI を返す */
 export async function renderPlanetPng(
   palette: string[],
   traits: PlanetTraits,
@@ -216,26 +124,23 @@ export async function renderPlanetPng(
 
   // Skia の部品は JS のゴミ集め(GC)では解放されにくいので、描き終わったらまとめて dispose() する
   const bytes = withDisposables((track) => {
-    const ring = traits.rings ? renderRing(track, style, palette, seed, cx, cy, r) : null;
-
     const image = offscreen(track, PLANET_SIZE, (canvas) => {
       const brush = style.createBrush(canvas, PLANET_SIZE, palette, seed, track);
       const random = createRandom(seed);
 
-      if (ring) drawRingHalf(canvas, ring, 'back', cx, cy);
-
       // 本体。別の層に描き、ふちの外を消してから重ねる
       const body = track(circlePath(cx, cy, r, style.edgeWobble, createRandom(seed + 1)));
       const soft = style.edgeSoftness;
+      // 塗る範囲の半径。ふちのがたつきで外に出た所と、ぼかす分(soft × 3)まで含める
+      const reach = r * (1 + style.edgeWobble) + soft * 3;
       // ふちをぼかす画風は少し外側まで塗っておき、あとでふちの外を少しずつ消す
-      const paintArea =
-        soft > 0 ? track(circlePath(cx, cy, r * (1 + style.edgeWobble) + soft * 3)) : body;
+      const paintArea = soft > 0 ? track(circlePath(cx, cy, reach)) : body;
       canvas.saveLayer();
       clipped(canvas, paintArea, () => {
         const context = { brush, palette, cx, cy, radius: r, random, track };
         brush.ground(paintArea);
         // 土台の塗り:テクスチャを使う画風はテクスチャ、それ以外は種類ごとの塗り
-        if (texture) drawTexturedBody(canvas, track, texture, palette, cx, cy, r, random);
+        if (texture) drawTexturedBody(canvas, track, texture, palette, cx, cy, r, reach, random);
         else type.base(context);
         // 種類ごとの特徴(光る筋・極冠・大陸と雲・クレーターなど)
         type.details(context);
@@ -257,30 +162,6 @@ export async function renderPlanetPng(
         );
       }
       canvas.restore();
-
-      if (ring) drawRingHalf(canvas, ring, 'front', cx, cy);
-
-      // 衛星
-      for (let i = 0; i < traits.moons; i++) {
-        const angle = ((MOON.angles[i] + between(random, -15, 15)) * Math.PI) / 180;
-        const mr = r * between(random, MOON.radius[0], MOON.radius[1]);
-        const mx = cx + Math.cos(angle) * r * MOON.distance;
-        const my = cy + Math.sin(angle) * r * MOON.distance;
-        const moon = track(circlePath(mx, my, mr, style.edgeWobble, random));
-        const color = varyColor(palette[(i + 1) % palette.length], random, 0.15);
-        clipped(canvas, moon, () => {
-          brush.ground(moon);
-          brush.fill(moon, color);
-          brush.fill(
-            track(blobPath(mx + mr * 0.2, my + mr * 0.1, mr * 0.4, 0.3, random)),
-            darken(color, 0.2),
-            { alpha: 0.6 },
-          );
-          brush.texture(moon);
-          shadeShape(canvas, track, style, brush, moon, mx, my, mr);
-        });
-        brush.outline?.(moon);
-      }
     });
     return image.encodeToBytes(ImageFormat.PNG);
   });
@@ -294,7 +175,7 @@ function nextFrame(): Promise<void> {
 }
 
 /**
- * 1つの色の一覧と種類・形から、画風の違う候補を1つずつ作る(並び順は PLANET_STYLES と同じ)。
+ * 1つの色の一覧と種類から、画風の違う候補を1つずつ作る(並び順は PLANET_STYLES と同じ)。
  * onProgress を渡すと、1つ描けるたびに、それまでに描けた候補を渡す
  */
 export async function createPlanetCandidates(
