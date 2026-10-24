@@ -13,15 +13,25 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export function Screen({ children, scroll = true }: { children: ReactNode; scroll?: boolean }) {
+  if (scroll) {
+    // contentInsetAdjustmentBehavior: iOS のヘッダーや画面上下の安全領域(ノッチなど)のぶん、中身を自動でずらす。
+    // これがないと、上の入力欄がヘッダーの裏に隠れて押せなくなる。
+    // automaticallyAdjustKeyboardInsets: キーボードが出たら、そのぶん下までスクロールできるようにする。
+    return (
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+      >
+        {children}
+      </ScrollView>
+    );
+  }
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
-      {scroll ? (
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {children}
-        </ScrollView>
-      ) : (
-        <View style={[styles.content, styles.fill]}>{children}</View>
-      )}
+      <View style={[styles.content, styles.fill]}>{children}</View>
     </SafeAreaView>
   );
 }

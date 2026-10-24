@@ -31,6 +31,11 @@ const LINKS: { href: Href; title: string; description: string }[] = [
     description: '惑星・衛星づくりを試す。結果を見るだけで保存はしない',
   },
   {
+    href: '/lab/ble',
+    title: 'すれ違い検知(BLE)',
+    description: 'BLE の状態、自分の一時ID、検知ログを見る。iPhone 2台で試す',
+  },
+  {
     href: '/debug',
     title: 'デバッグ',
     description: 'データのモード、デモ操作、すれ違い検知ログ',
