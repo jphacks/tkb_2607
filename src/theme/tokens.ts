@@ -63,7 +63,7 @@ export const color = {
     neutral: primitive.gray700,
     neutralMuted: primitive.gray600,
     disabled: primitive.gray400,
-    /** 惑星の名前ラベル・ホームのピルの文字(紺) */
+    /** 惑星の名前ラベルの文字(紺) */
     label: primitive.navy900,
     onPrimary: primitive.white,
     onDark: primitive.gray50,
