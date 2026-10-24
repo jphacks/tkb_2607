@@ -1,0 +1,28 @@
+# PR と main への push のたびに、型チェックと Lint を自動で実行する。
+# 失敗すると PR に赤い × が付く(main に入れる前に直す)。
+name: check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: 型チェック
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npx expo lint

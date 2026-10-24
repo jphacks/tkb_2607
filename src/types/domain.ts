@@ -1,0 +1,136 @@
+// アプリ全体で使うドメイン型。DB の型(Supabase CLI で生成)とは分け、変換は src/data/ の中で行う。
+// 既存の型の変更・削除は全員に影響するので、Claude Code と影響範囲を確認してから行うこと。
+
+/** ユーザーID(Supabase Auth の user.id と同じ) */
+export type UserId = string;
+
+export type AuthUser = {
+  id: UserId;
+  email: string | null;
+};
+
+export type Planet = {
+  /** 惑星画像の URL。画像がまだない場合(ダミーなど)は null で、palette の色で描く */
+  imageUrl: string | null;
+  /** 惑星の色(例: "#E8A0B4")。先頭ほど代表的な色 */
+  palette: string[];
+};
+
+export type SatelliteSummary = {
+  id: string;
+  imageUrl: string;
+};
+
+export type Satellite = SatelliteSummary & {
+  /** ホームで惑星の周りに表示するか(1人3つまで) */
+  isFeatured: boolean;
+  sortOrder: number;
+  createdAt: string;
+};
+
+export type Tag = {
+  id: number;
+  name: string;
+};
+
+export type MyProfile = {
+  userId: UserId;
+  /** 未設定なら空文字(初回のプロフィール設定がまだ) */
+  nickname: string;
+  /** 本人にしか見えない本名 */
+  realName: string | null;
+  tags: Tag[];
+  /** まだ作っていなければ null */
+  planet: Planet | null;
+};
+
+export type UpdateProfileInput = {
+  nickname: string;
+  realName: string | null;
+  /** タグ名の一覧。存在しないタグは新しく作られる */
+  tagNames: string[];
+};
+
+/** ホームの中心に出る自分 */
+export type HomeUser = {
+  userId: UserId;
+  nickname: string;
+  planet: Planet | null;
+  featuredSatellites: SatelliteSummary[];
+};
+
+/** ホームに出る候補ユーザー。引力の計算に必要な材料を持つ */
+export type HomeCandidate = {
+  userId: UserId;
+  nickname: string;
+  planet: Planet;
+  /** 最大3つ */
+  featuredSatellites: SatelliteSummary[];
+  /** 自分と共通のタグの数 */
+  sharedTagCount: number;
+  /** 2人のタグの和集合の数(Jaccard 係数 = sharedTagCount / tagUnionCount) */
+  tagUnionCount: number;
+  /** すれ違った回数 */
+  encounterCount: number;
+  lastEncounterAt: string | null;
+  /** すれ違った日時(新しい順)。時間減衰を端末で計算するときに使う */
+  encounterTimestamps: string[];
+  /** サーバーでスコアを計算する場合だけ入る */
+  score?: number;
+};
+
+export type HomeData = {
+  me: HomeUser;
+  candidates: HomeCandidate[];
+};
+
+export type PlanetDetail = {
+  userId: UserId;
+  nickname: string;
+  planet: Planet | null;
+  satellites: SatelliteSummary[];
+  tags: Tag[];
+};
+
+export type SavePlanetInput = {
+  /** 生成した惑星画像(端末内のファイル URI、透過 PNG) */
+  planetImageUri: string;
+  palette: string[];
+  /** 元の写真(端末内のファイル URI) */
+  sourcePhotoUri: string;
+};
+
+export type AddSatelliteInput = {
+  /** 切り抜いた画像(端末内のファイル URI、透過 PNG) */
+  imageUri: string;
+};
+
+export type UpdateSatelliteInput = {
+  isFeatured?: boolean;
+  sortOrder?: number;
+};
+
+/** すれ違い検知用の一時ID */
+export type BleToken = {
+  token: string;
+  validUntil: string;
+};
+
+export type EncounterReport = {
+  /** 相手から読み取った一時ID */
+  token: string;
+  rssi: number;
+  detectedAt: string;
+};
+
+export type EncounterReportResult = {
+  recorded: boolean;
+  reason: 'ok' | 'unknown_token' | 'self' | 'weak_signal' | 'duplicate';
+};
+
+/** デモ用のダミーユーザー */
+export type DummyUser = {
+  userId: UserId;
+  nickname: string;
+  encounterCount: number;
+};

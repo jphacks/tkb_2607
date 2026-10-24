@@ -1,0 +1,77 @@
+{
+  "expo": {
+    "name": "Perigee",
+    "slug": "perigee",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "perigee",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.tuzuya.perigee",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "近くにいる Perigee ユーザーとのすれ違いを検知するために Bluetooth を使います。",
+        "UIBackgroundModes": ["bluetooth-central", "bluetooth-peripheral"],
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["android.permission.MODIFY_AUDIO_SETTINGS", "android.permission.RECORD_AUDIO"]
+    },
+    "web": {
+      "output": "server",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#208AEF",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 76
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "好きなものの写真から惑星と衛星を作るために、写真ライブラリを使います。",
+          "cameraPermission": "好きなものを撮影して惑星と衛星を作るために、カメラを使います。",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "惑星の声を録音するために、マイクを使います。",
+          "enableBackgroundPlayback": false
+        }
+      ],
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "ac104ace-276d-4bdc-828d-5a77b9a8a9a8"
+      }
+    },
+    "owner": "tuzuya"
+  }
+}
