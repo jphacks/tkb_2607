@@ -1,14 +1,27 @@
 // 惑星と衛星を作る画面の部品(土台の画面に差し込んで使う)。
-// - PlanetCreator:【仮実装】写真を縮小して色を取り出すだけ。水彩の惑星生成はまだ
+// - PlanetCreator:写真の色から、画風の違う惑星の候補を作って選ぶ
 // - SatelliteCreator:Vision で被写体を切り抜く。切り抜けなければ円形のトリミング画面を出す
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Button, Modal, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Button,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import type { PlanetCreatorProps, SatelliteCreatorProps } from './contract';
 import { CircleCropper } from './cropper';
-import { cutoutSubjectWithVision, describeError, generatePlanet } from './processing';
+import { deleteCachedFiles } from './files';
+import { extractPlanetPalette } from './palette';
+import { createPlanetCandidates, newPlanetSeed, type PlanetCandidate } from './planet-art';
+import { DEFAULT_PLANET_STYLE_ID } from './planet-styles';
+import { cutoutSubjectWithVision, describeError } from './processing';
 
 async function pickPhoto(): Promise<string | null> {
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -18,37 +31,70 @@ async function pickPhoto(): Promise<string | null> {
   return result.canceled ? null : result.assets[0].uri;
 }
 
+type PlanetDraft = {
+  sourcePhotoUri: string;
+  palette: string[];
+  candidates: PlanetCandidate[];
+  /** 「この惑星にする」で土台に渡した画像。土台が使うので、作り直しても消さない */
+  savedImageUri: string | null;
+};
+
+// 惑星づくり:写真を選ぶ → 色を取り出す → 画風の違う候補を 2×2 で並べる → 1つ選んで決める
 export function PlanetCreator({ onComplete }: PlanetCreatorProps) {
   const [busy, setBusy] = useState(false);
-  const [draft, setDraft] = useState<{
-    imageUri: string;
-    palette: string[];
-    sourcePhotoUri: string;
-  } | null>(null);
+  const [draft, setDraft] = useState<PlanetDraft | null>(null);
+  /** 選んだ候補の画風。作り直しても同じ画風を選んだままにする */
+  const [selectedStyleId, setSelectedStyleId] = useState(DEFAULT_PLANET_STYLE_ID);
 
   const choose = async () => {
     const uri = await pickPhoto();
     if (!uri) return;
     setBusy(true);
     try {
-      const planet = await generatePlanet(uri);
-      setDraft({ ...planet, sourcePhotoUri: uri });
+      const palette = await extractPlanetPalette(uri);
+      const candidates = await createPlanetCandidates(palette, newPlanetSeed());
+      setDraft({ sourcePhotoUri: uri, palette, candidates, savedImageUri: null });
+      setSelectedStyleId(DEFAULT_PLANET_STYLE_ID);
     } catch (e) {
-      Alert.alert('惑星を作れませんでした', String(e));
+      Alert.alert('惑星を作れませんでした', describeError(e));
     } finally {
       setBusy(false);
     }
   };
 
-  const confirm = async () => {
+  // 同じ色・同じ画風のまま、別の模様で作り直す。前の候補は使わないので消す
+  const remake = async () => {
     if (!draft) return;
     setBusy(true);
     try {
+      const candidates = await createPlanetCandidates(draft.palette, newPlanetSeed());
+      setDraft({ ...draft, candidates });
+      deleteCachedFiles(
+        draft.candidates.map((c) => c.imageUri).filter((uri) => uri !== draft.savedImageUri),
+      );
+    } catch (e) {
+      Alert.alert('惑星を作り直せませんでした', describeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const selected = draft?.candidates.find((c) => c.styleId === selectedStyleId) ?? null;
+
+  const confirm = async () => {
+    if (!draft || !selected) return;
+    setBusy(true);
+    try {
       await onComplete({
-        planetImageUri: draft.imageUri,
+        planetImageUri: selected.imageUri,
         palette: draft.palette,
         sourcePhotoUri: draft.sourcePhotoUri,
       });
+      // 選ばなかった候補は使わないので消し、画面には選んだ1つだけを残す
+      deleteCachedFiles(draft.candidates.filter((c) => c !== selected).map((c) => c.imageUri));
+      setDraft({ ...draft, candidates: [selected], savedImageUri: selected.imageUri });
+    } catch (e) {
+      Alert.alert('惑星を保存できませんでした', describeError(e));
     } finally {
       setBusy(false);
     }
@@ -58,11 +104,32 @@ export function PlanetCreator({ onComplete }: PlanetCreatorProps) {
     <View style={styles.container}>
       {draft && (
         <>
-          <Image source={{ uri: draft.imageUri }} style={styles.preview} contentFit="cover" />
           <View style={styles.palette}>
-            {draft.palette.map((color) => (
-              <View key={color} style={[styles.swatch, { backgroundColor: color }]} />
+            {draft.palette.map((color, i) => (
+              <View key={`${color}-${i}`} style={[styles.swatch, { backgroundColor: color }]} />
             ))}
+          </View>
+          <View style={styles.grid}>
+            {draft.candidates.map((candidate) => {
+              const isSelected = candidate.styleId === selectedStyleId;
+              return (
+                <Pressable
+                  key={candidate.styleId}
+                  onPress={() => setSelectedStyleId(candidate.styleId)}
+                  disabled={busy}
+                  style={[styles.candidate, isSelected && styles.candidateSelected]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                >
+                  <Image source={{ uri: candidate.imageUri }} style={styles.candidateImage} />
+                  <Text
+                    style={[styles.candidateLabel, isSelected && styles.candidateLabelSelected]}
+                  >
+                    {candidate.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </>
       )}
@@ -71,7 +138,8 @@ export function PlanetCreator({ onComplete }: PlanetCreatorProps) {
       ) : (
         <>
           <Button title={draft ? '写真を選び直す' : '好きなものの写真を選ぶ'} onPress={choose} />
-          {draft && <Button title="この惑星にする" onPress={confirm} />}
+          {draft && <Button title="作り直す" onPress={remake} />}
+          {draft && <Button title="この惑星にする" onPress={confirm} disabled={!selected} />}
         </>
       )}
     </View>
@@ -135,7 +203,20 @@ export function SatelliteCreator({ onComplete }: SatelliteCreatorProps) {
 
 const styles = StyleSheet.create({
   container: { alignItems: 'center', gap: 16, padding: 24 },
-  preview: { width: 200, height: 200, borderRadius: 100 },
   palette: { flexDirection: 'row', gap: 8 },
   swatch: { width: 32, height: 32, borderRadius: 16 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, width: 312 },
+  candidate: {
+    width: 150,
+    alignItems: 'center',
+    gap: 4,
+    padding: 6,
+    borderRadius: 12,
+    borderWidth: 3,
+    borderColor: 'transparent',
+  },
+  candidateSelected: { borderColor: '#4C7DFF', backgroundColor: '#EEF3FF' },
+  candidateImage: { width: 132, height: 132 },
+  candidateLabel: { fontSize: 13, color: '#666' },
+  candidateLabelSelected: { color: '#1F4FD8', fontWeight: '600' },
 });

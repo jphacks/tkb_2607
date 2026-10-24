@@ -1,5 +1,5 @@
-// 【仮実装】水彩の惑星生成はまだ。今は「縮小して PNG にする」だけ。
-// 衛星は Vision で被写体を切り抜き、できなければ写真の中央を円形に切り抜く。
+// 写真の加工(画面なしで呼べる処理)。
+// 惑星は写真から色を取り出し、水彩で描く。衛星は Vision で被写体を切り抜き、できなければ写真の中央を円形に切り抜く。
 import {
   ClipOp,
   ImageFormat,
@@ -8,16 +8,18 @@ import {
   type SkImage,
   type SkPaint,
 } from '@shopify/react-native-skia';
-import { File, Paths } from 'expo-file-system';
 import {
   ImageManipulator,
   SaveFormat,
   type ActionCrop,
   type ImageRef,
 } from 'expo-image-manipulator';
-import ImageColors from 'react-native-image-colors';
 
 import type { CutoutSubject, GeneratePlanet } from './contract';
+import { savePngToCache } from './files';
+import { extractPlanetPalette } from './palette';
+import { newPlanetSeed, renderPlanetPng } from './planet-art';
+import { DEFAULT_PLANET_STYLE_ID } from './planet-styles';
 import { cutoutWithVision } from './vision';
 
 const MAX_SIZE = 512;
@@ -38,9 +40,6 @@ export type CropRegion = ActionCrop['crop'];
 export function describeError(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
-
-/** 同じミリ秒に切り抜いてもファイル名がぶつからないように足す番号 */
-let cutoutCount = 0;
 
 /** 長い辺が MAX_SIZE を超えるときだけ縮めて PNG で保存する(小さい写真は拡大しない) */
 async function resizeToPng(uri: string): Promise<string> {
@@ -98,11 +97,7 @@ async function renderSquarePng(
 
     const snapshot = surface.makeImageSnapshot();
     disposables.push(snapshot);
-    const bytes = snapshot.encodeToBytes(ImageFormat.PNG);
-    const file = new File(Paths.cache, `cutout-${Date.now()}-${cutoutCount++}.png`);
-    file.create();
-    await file.write(bytes);
-    return file.uri;
+    return await savePngToCache('cutout', snapshot.encodeToBytes(ImageFormat.PNG));
   } finally {
     disposables.reverse().forEach((item) => item.dispose());
   }
@@ -133,21 +128,10 @@ function padToSquarePng(uri: string): Promise<string> {
   });
 }
 
-async function extractPalette(uri: string): Promise<string[]> {
-  const result = await ImageColors.getColors(uri, { fallback: '#999999' });
-  if (result.platform === 'ios') {
-    return [result.primary, result.secondary, result.detail, result.background];
-  }
-  if (result.platform === 'android') {
-    return [result.vibrant, result.dominant, result.muted, result.average].filter(
-      (c): c is string => !!c,
-    );
-  }
-  return ['#999999'];
-}
-
+// 画面なしで呼ぶ用(デモ用ダミーの作成にも使う)。写真から色を取り出し、水彩で惑星を1つ描く
 export const generatePlanet: GeneratePlanet = async (photoUri) => {
-  const [imageUri, palette] = await Promise.all([resizeToPng(photoUri), extractPalette(photoUri)]);
+  const palette = await extractPlanetPalette(photoUri);
+  const imageUri = await renderPlanetPng(palette, DEFAULT_PLANET_STYLE_ID, newPlanetSeed());
   return { imageUri, palette };
 };
 
