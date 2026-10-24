@@ -1,4 +1,5 @@
 // モックモードのダミーデータ。シード(supabase/seed)と同じ顔ぶれにそろえる。
+import type { AgeGroup, Gender } from '@/types/domain';
 
 export type FixtureUser = {
   id: string;
@@ -7,6 +8,10 @@ export type FixtureUser = {
   tags: string[];
   /** 自分とのすれ違い回数(よく / たまに / ゼロ の濃淡をつける) */
   encounterCount: number;
+  ageGroup?: AgeGroup;
+  gender?: Gender;
+  bio?: string;
+  soundId?: string;
 };
 
 export const MOCK_ME_ID = 'mock-me';
@@ -18,6 +23,10 @@ export const ME_FIXTURE = {
   realName: '山田 太郎',
   palette: ['#F4B6C2', '#B5D8EB', '#FFE5A5'],
   tags: ['JPHUCK大学', '写真サークル'],
+  ageGroup: '20s' as AgeGroup,
+  gender: 'unspecified' as Gender,
+  bio: '好きなものを集めた星。音楽を聴きながら、いろんな場所に行ってみたい。',
+  soundId: 'kirarin',
 };
 
 export const DUMMY_FIXTURES: FixtureUser[] = [
@@ -27,6 +36,10 @@ export const DUMMY_FIXTURES: FixtureUser[] = [
     palette: ['#7FB3D5', '#D6EAF8', '#2E86C1'],
     tags: ['JPHUCK大学', '写真サークル'],
     encounterCount: 12,
+    ageGroup: '20s',
+    gender: 'female',
+    bio: '空の写真を撮るのが好き。晴れた日はだいたい屋上にいます。',
+    soundId: 'kirarin',
   },
   {
     id: 'dummy-02',
@@ -34,6 +47,10 @@ export const DUMMY_FIXTURES: FixtureUser[] = [
     palette: ['#F5B041', '#FAD7A0', '#DC7633'],
     tags: ['JPHUCK大学'],
     encounterCount: 8,
+    ageGroup: '20s',
+    gender: 'male',
+    bio: 'みかんは皮ごと食べる派。',
+    soundId: 'pow',
   },
   {
     id: 'dummy-03',
@@ -41,6 +58,10 @@ export const DUMMY_FIXTURES: FixtureUser[] = [
     palette: ['#F1948A', '#FADBD8', '#C0392B'],
     tags: ['写真サークル'],
     encounterCount: 5,
+    ageGroup: '10s',
+    gender: 'female',
+    bio: '春の景色を集めた星。',
+    soundId: 'shararan',
   },
   {
     id: 'dummy-04',
@@ -48,6 +69,10 @@ export const DUMMY_FIXTURES: FixtureUser[] = [
     palette: ['#5DADE2', '#AED6F1', '#1B4F72'],
     tags: ['JPHUCK大学', 'カフェ部'],
     encounterCount: 3,
+    ageGroup: '20s',
+    gender: 'unspecified',
+    bio: 'カフェ巡りが趣味です。おすすめ教えてください。',
+    soundId: 'poyon',
   },
   {
     id: 'dummy-05',
@@ -55,6 +80,10 @@ export const DUMMY_FIXTURES: FixtureUser[] = [
     palette: ['#A0522D', '#DEB887', '#6E2C00'],
     tags: ['カフェ部'],
     encounterCount: 2,
+    ageGroup: '30s',
+    gender: 'male',
+    bio: '',
+    soundId: 'pyon',
   },
   {
     id: 'dummy-06',
@@ -62,6 +91,10 @@ export const DUMMY_FIXTURES: FixtureUser[] = [
     palette: ['#82E0AA', '#D5F5E3', '#1E8449'],
     tags: ['JPHUCK大学'],
     encounterCount: 1,
+    ageGroup: '20s',
+    gender: 'female',
+    bio: '植物を育てています。',
+    soundId: 'kyururun',
   },
   {
     id: 'dummy-07',

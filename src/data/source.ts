@@ -7,9 +7,11 @@ import type {
   EncounterReportResult,
   HomeData,
   MyProfile,
+  PinnedPlanet,
   PlanetDetail,
   Satellite,
   SavePlanetInput,
+  SoundId,
   Tag,
   UpdateProfileInput,
   UpdateSatelliteInput,
@@ -37,6 +39,8 @@ export interface DataSource {
   getMyProfile(): Promise<MyProfile>;
   updateMyProfile(input: UpdateProfileInput): Promise<void>;
   searchTags(query: string): Promise<Tag[]>;
+  /** 惑星の効果音を選ぶ。null で「なし」に戻す */
+  updateMySound(soundId: SoundId | null): Promise<void>;
 
   // 惑星・衛星
   savePlanet(input: SavePlanetInput): Promise<void>;
@@ -50,6 +54,13 @@ export interface DataSource {
   /** その週の角度を保存する。先に保存されていた・週が変わっていたら false */
   saveHomeAngles(periodStart: string, angles: ReadonlyMap<UserId, number>): Promise<boolean>;
   getPlanetDetail(userId: UserId): Promise<PlanetDetail>;
+
+  // ピン止め(自分のピンは自分にしか見えない)
+  /** 新しくピン止めした順 */
+  listPins(): Promise<PinnedPlanet[]>;
+  /** すでにピン止めしていても失敗しない */
+  pin(targetUserId: UserId): Promise<void>;
+  unpin(targetUserId: UserId): Promise<void>;
 
   // すれ違い
   getBleToken(): Promise<BleToken>;

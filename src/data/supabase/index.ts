@@ -3,9 +3,12 @@ import { File } from 'expo-file-system';
 import type { Tables, TablesUpdate } from '@/lib/database.types';
 import { getSupabase } from '@/lib/supabase';
 import type {
+  AgeGroup,
   AuthUser,
   EncounterReportResult,
+  Gender,
   HomeCandidate,
+  PinnedPlanet,
   Planet,
   Satellite,
   SatelliteSummary,
@@ -94,6 +97,20 @@ async function getFeatured(userId: string): Promise<SatelliteSummary[]> {
   }));
 }
 
+/** profiles の追加項目(年代・性別・ひとこと・効果音)。DB では text なので、ここで型をつける */
+const PROFILE_DETAIL_COLUMNS = 'age_group, gender, bio, sound_id' as const;
+
+function toProfileDetail(
+  row: Pick<Tables<'profiles'>, 'age_group' | 'gender' | 'bio' | 'sound_id'> | null,
+) {
+  return {
+    ageGroup: (row?.age_group ?? null) as AgeGroup | null,
+    gender: (row?.gender ?? null) as Gender | null,
+    bio: row?.bio ?? '',
+    soundId: row?.sound_id ?? null,
+  };
+}
+
 function toAuthUser(
   user: { id: string; email?: string | null } | null | undefined,
 ): AuthUser | null {
@@ -132,28 +149,43 @@ export const supabaseSource: DataSource = {
     const supabase = getSupabase();
     const userId = await requireUserId();
     const [profile, priv, tags, planet] = await Promise.all([
-      supabase.from('profiles').select('nickname').eq('id', userId).single(),
+      supabase
+        .from('profiles')
+        .select(`nickname, ${PROFILE_DETAIL_COLUMNS}`)
+        .eq('id', userId)
+        .single(),
       supabase.from('private_profiles').select('real_name').eq('user_id', userId).maybeSingle(),
       supabase.from('user_tags').select('tags(id, name)').eq('user_id', userId),
       supabase.from('planets').select('image_path, palette').eq('user_id', userId).maybeSingle(),
     ]);
+    const profileRow = check(profile);
     return {
       userId,
-      nickname: check(profile)?.nickname ?? '',
+      nickname: profileRow?.nickname ?? '',
       realName: check(priv)?.real_name ?? null,
       tags: toTags(check(tags)),
       planet: toPlanet(check(planet)),
+      ...toProfileDetail(profileRow),
     };
   },
 
-  async updateMyProfile({ nickname, realName, tagNames }) {
+  async updateMyProfile({ nickname, realName, tagNames, ageGroup, gender, bio }) {
     const supabase = getSupabase();
     const userId = await requireUserId();
-    check(await supabase.from('profiles').update({ nickname }).eq('id', userId));
+    const patch: TablesUpdate<'profiles'> = { nickname };
+    if (ageGroup !== undefined) patch.age_group = ageGroup;
+    if (gender !== undefined) patch.gender = gender;
+    if (bio !== undefined) patch.bio = bio;
+    check(await supabase.from('profiles').update(patch).eq('id', userId));
     check(
       await supabase.from('private_profiles').update({ real_name: realName }).eq('user_id', userId),
     );
     check(await supabase.rpc('set_my_tags', { p_names: tagNames }));
+  },
+
+  async updateMySound(soundId) {
+    const userId = await requireUserId();
+    check(await getSupabase().from('profiles').update({ sound_id: soundId }).eq('id', userId));
   },
 
   async searchTags(query) {
@@ -294,8 +326,13 @@ export const supabaseSource: DataSource = {
 
   async getPlanetDetail(userId) {
     const supabase = getSupabase();
-    const [profile, planet, satellites, tags] = await Promise.all([
-      supabase.from('profiles').select('nickname').eq('id', userId).single(),
+    const myId = await requireUserId();
+    const [profile, planet, satellites, tags, pin] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select(`nickname, ${PROFILE_DETAIL_COLUMNS}`)
+        .eq('id', userId)
+        .single(),
       supabase.from('planets').select('image_path, palette').eq('user_id', userId).maybeSingle(),
       supabase
         .from('satellites')
@@ -303,17 +340,100 @@ export const supabaseSource: DataSource = {
         .eq('user_id', userId)
         .order('sort_order'),
       supabase.from('user_tags').select('tags(id, name)').eq('user_id', userId),
+      supabase
+        .from('pins')
+        .select('target_user_id')
+        .eq('user_id', myId)
+        .eq('target_user_id', userId)
+        .maybeSingle(),
     ]);
+    const profileRow = check(profile);
     return {
       userId,
-      nickname: check(profile)?.nickname ?? '',
+      nickname: profileRow?.nickname ?? '',
       planet: toPlanet(check(planet)),
       satellites: (check(satellites) ?? []).map((r) => ({
         id: r.id,
         imageUrl: publicUrl('satellites', r.image_path),
       })),
       tags: toTags(check(tags)),
+      ...toProfileDetail(profileRow),
+      isPinned: check(pin) !== null,
     };
+  },
+
+  async listPins() {
+    const supabase = getSupabase();
+    const myId = await requireUserId();
+    const pins =
+      check(
+        await supabase
+          .from('pins')
+          .select('target_user_id, created_at')
+          .eq('user_id', myId)
+          .order('created_at', { ascending: false }),
+      ) ?? [];
+    const ids = pins.map((p) => p.target_user_id);
+    if (ids.length === 0) return [];
+    const [profiles, planets, satellites, tags] = await Promise.all([
+      supabase.from('profiles').select(`id, nickname, ${PROFILE_DETAIL_COLUMNS}`).in('id', ids),
+      supabase.from('planets').select('user_id, image_path, palette').in('user_id', ids),
+      supabase
+        .from('satellites')
+        .select('id, user_id, image_path')
+        .in('user_id', ids)
+        .eq('is_featured', true)
+        .order('sort_order'),
+      supabase.from('user_tags').select('user_id, tags(id, name)').in('user_id', ids),
+    ]);
+    const profileById = new Map((check(profiles) ?? []).map((r) => [r.id, r]));
+    const planetById = new Map((check(planets) ?? []).map((r) => [r.user_id, r]));
+    const satelliteRows = check(satellites) ?? [];
+    const tagRows = check(tags) ?? [];
+    return pins.flatMap((p): PinnedPlanet[] => {
+      const profile = profileById.get(p.target_user_id);
+      // 相手が退会していたら出さない
+      if (!profile) return [];
+      const detail = toProfileDetail(profile);
+      return [
+        {
+          userId: profile.id,
+          nickname: profile.nickname,
+          planet: toPlanet(planetById.get(profile.id) ?? null),
+          featuredSatellites: satelliteRows
+            .filter((s) => s.user_id === profile.id)
+            .slice(0, MAX_FEATURED_SATELLITES)
+            .map((s) => ({ id: s.id, imageUrl: publicUrl('satellites', s.image_path) })),
+          tags: toTags(tagRows.filter((t) => t.user_id === profile.id)),
+          bio: detail.bio,
+          soundId: detail.soundId,
+          pinnedAt: p.created_at,
+        },
+      ];
+    });
+  },
+
+  async pin(targetUserId) {
+    const userId = await requireUserId();
+    check(
+      await getSupabase()
+        .from('pins')
+        .upsert(
+          { user_id: userId, target_user_id: targetUserId },
+          { onConflict: 'user_id,target_user_id', ignoreDuplicates: true },
+        ),
+    );
+  },
+
+  async unpin(targetUserId) {
+    const userId = await requireUserId();
+    check(
+      await getSupabase()
+        .from('pins')
+        .delete()
+        .eq('user_id', userId)
+        .eq('target_user_id', targetUserId),
+    );
   },
 
   async getBleToken() {
