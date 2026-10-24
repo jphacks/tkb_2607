@@ -2,10 +2,11 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Button, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Button, Modal, StyleSheet, View } from 'react-native';
 
 import type { PlanetCreatorProps, SatelliteCreatorProps } from './contract';
-import { cutoutSubject, generatePlanet } from './processing';
+import { CircleCropper } from './cropper';
+import { cutoutSubjectWithVision, describeError, generatePlanet } from './processing';
 
 async function pickPhoto(): Promise<string | null> {
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -75,24 +76,59 @@ export function PlanetCreator({ onComplete }: PlanetCreatorProps) {
   );
 }
 
+// 衛星づくり:写真を選ぶ → Vision で被写体を切り抜く → 切り抜けなければトリミング画面で丸く切り取る
 export function SatelliteCreator({ onComplete }: SatelliteCreatorProps) {
   const [busy, setBusy] = useState(false);
+  /** トリミング画面に出す写真。null のときは画面を閉じている */
+  const [cropPhotoUri, setCropPhotoUri] = useState<string | null>(null);
 
   const add = async () => {
     const uri = await pickPhoto();
     if (!uri) return;
     setBusy(true);
     try {
-      const { imageUri } = await cutoutSubject(uri);
+      let imageUri: string;
+      try {
+        imageUri = await cutoutSubjectWithVision(uri);
+      } catch (e) {
+        if (__DEV__) console.log(`[photo] トリミング画面を出す(理由:${describeError(e)})`);
+        setCropPhotoUri(uri);
+        return;
+      }
       await onComplete({ imageUri });
     } catch (e) {
-      Alert.alert('衛星を作れませんでした', String(e));
+      Alert.alert('衛星を作れませんでした', describeError(e));
     } finally {
       setBusy(false);
     }
   };
 
-  return busy ? <ActivityIndicator /> : <Button title="写真から衛星を追加" onPress={add} />;
+  const confirmCrop = async (imageUri: string) => {
+    await onComplete({ imageUri });
+    setCropPhotoUri(null);
+  };
+
+  return (
+    <>
+      {busy ? <ActivityIndicator /> : <Button title="写真から衛星を追加" onPress={add} />}
+      <Modal
+        visible={cropPhotoUri !== null}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setCropPhotoUri(null)}
+      >
+        {cropPhotoUri && (
+          <CircleCropper
+            key={cropPhotoUri}
+            photoUri={cropPhotoUri}
+            message="被写体が見つからなかったので、丸く切り取る範囲を選んでください"
+            onCancel={() => setCropPhotoUri(null)}
+            onConfirm={confirmCrop}
+          />
+        )}
+      </Modal>
+    </>
+  );
 }
 
 const styles = StyleSheet.create({
