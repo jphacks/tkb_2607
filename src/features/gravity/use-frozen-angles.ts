@@ -16,16 +16,20 @@ function membersKey(radii: Map<UserId, number>, mode: string): string {
   return `${mode}:${[...radii.keys()].sort().join(',')}`;
 }
 
+const EMPTY: Map<UserId, number> = new Map();
+
+/** enabled が false のあいだは計算しない(保存済みの角度があるときなど)。そのあいだは空の Map を返す */
 export function useFrozenAngles(
   radii: Map<UserId, number>,
   mode?: AngularMode,
+  enabled = true,
 ): Map<UserId, number> {
   const key = membersKey(radii, mode ?? 'default');
-  const [frozen, setFrozen] = useState<FrozenAngles>(() => ({
-    key,
-    angles: calculateAngles(radii, mode),
-  }));
+  const [frozen, setFrozen] = useState<FrozenAngles>(() =>
+    enabled ? { key, angles: calculateAngles(radii, mode) } : { key: '', angles: EMPTY },
+  );
 
+  if (!enabled) return EMPTY;
   if (frozen.key !== key) {
     // 描画中に state を更新して、顔ぶれが変わったその回の描画から新しい角度を使う(React 公式の書き方)
     const next = { key, angles: calculateAngles(radii, mode) };

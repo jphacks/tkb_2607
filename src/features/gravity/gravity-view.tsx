@@ -1,5 +1,7 @@
 // 引力の描画。スコア計算(scoring.ts)・半径マッピング(radius.ts)・角度の決定(angular-layout.ts)は切り出し済み。
 // ここは座標変換と描画のみを担当する。惑星1つぶんの見た目は土台の PlanetNode を使う。
+// 位置はデザイン上の座標(home-layout.ts の DESIGN_FRAME)で計算し、背景画像と同じ倍率で画面の座標に直す。
+// そのため、画面の大きさが変わっても半径・角度(論理的な配置)は変わらない。
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
@@ -8,11 +10,14 @@ import type { UserId } from '@/types/domain';
 
 import type { GravityViewProps } from './contract';
 import { GRAVITY_CONFIG, type AngularMode } from './config';
+import { DESIGN_FRAME, fitDesign, ME_SLOT } from './home-layout';
 import { calculateMaxRadius, mapStrengthToRadius } from './radius';
 import { calculateStrengths } from './scoring';
 import { useFrozenAngles } from './use-frozen-angles';
 
-const { planetSize: PLANET_SIZE, mePlanetSize: ME_PLANET_SIZE } = GRAVITY_CONFIG.layout;
+const PLANET_SIZE = GRAVITY_CONFIG.layout.planetSize;
+/** 自分の惑星(ME_SLOT)から、デザインの画面の端までに収まる最大半径 */
+const MAX_RADIUS = calculateMaxRadius(ME_SLOT, DESIGN_FRAME);
 
 type Props = GravityViewProps & {
   /** 角度の決め方。練習場で見比べるためのもの(契約外)。省略時は config.ts の値 */
@@ -31,19 +36,19 @@ export function GravityView({
   const windowSize = useWindowDimensions();
   const [area, setArea] = useState<{ width: number; height: number } | null>(null);
   const { width, height } = area ?? windowSize;
-  const cx = width / 2;
-  const cy = height / 2;
+  const { scale, offsetX, offsetY } = fitDesign(width, height);
 
-  const maxRadius = calculateMaxRadius(width, height);
-  const strengths = calculateStrengths(me, candidates);
+  // 顔ぶれは週1回選んだときの関係の強さの順に並んでいるので、先頭から出す(週の途中で出る人が変わらない)
+  const visible = candidates.slice(0, GRAVITY_CONFIG.maxVisiblePlanets);
+  const strengths = calculateStrengths(me, visible);
   const radii = new Map(
-    candidates.map((c) => [c.userId, mapStrengthToRadius(strengths.get(c.userId) ?? 0, maxRadius)]),
+    visible.map((c) => [c.userId, mapStrengthToRadius(strengths.get(c.userId) ?? 0, MAX_RADIUS)]),
   );
 
   // 角度は週に1回だけ決める。保存済み(savedAngles)があればそれを使い、
   // なければ(null)ここで計算して onAnglesComputed で土台に渡す。練習場など undefined のときはその場で計算する
-  const computedAngles = useFrozenAngles(radii, angularMode);
-  const angles: ReadonlyMap<UserId, number> = savedAngles ?? computedAngles;
+  const needsCompute = !savedAngles || visible.some((c) => !savedAngles.has(c.userId));
+  const computedAngles = useFrozenAngles(radii, angularMode, needsCompute);
 
   const reported = useRef<ReadonlyMap<UserId, number> | null>(null);
   useEffect(() => {
@@ -53,6 +58,14 @@ export function GravityView({
     onAnglesComputed(computedAngles);
   }, [savedAngles, computedAngles, onAnglesComputed]);
 
+  /** デザイン上の中心座標と直径を、画面上の箱(左上と直径)に直す */
+  const toScreen = (x: number, y: number, designSize: number) => {
+    const size = designSize * scale;
+    return { size, left: offsetX + x * scale - size / 2, top: offsetY + y * scale - size / 2 };
+  };
+
+  const mePos = toScreen(ME_SLOT.x, ME_SLOT.y, ME_SLOT.size);
+
   return (
     <View
       style={styles.space}
@@ -60,25 +73,24 @@ export function GravityView({
         setArea({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })
       }
     >
-      {candidates.map((c) => {
-        const r = radii.get(c.userId) ?? maxRadius;
+      {visible.map((c) => {
+        const r = radii.get(c.userId) ?? MAX_RADIUS;
         // 保存済みの角度にいない人(念のため)は、その場で計算した角度を使う
-        const angle = angles.get(c.userId) ?? computedAngles.get(c.userId) ?? 0;
+        const angle = savedAngles?.get(c.userId) ?? computedAngles.get(c.userId) ?? 0;
+        const { size, left, top } = toScreen(
+          ME_SLOT.x + r * Math.cos(angle),
+          ME_SLOT.y + r * Math.sin(angle),
+          PLANET_SIZE,
+        );
         return (
           <Pressable
             key={c.userId}
             onPress={() => onPressPlanet(c.userId)}
-            style={[
-              styles.planet,
-              {
-                left: cx + r * Math.cos(angle) - PLANET_SIZE / 2,
-                top: cy + r * Math.sin(angle) - PLANET_SIZE / 2,
-              },
-            ]}
+            style={[styles.planet, { left, top }]}
           >
             <PlanetNode
               planet={c.planet}
-              size={PLANET_SIZE}
+              size={size}
               label={c.nickname}
               showLabel={c.encounterCount >= GRAVITY_CONFIG.labelMinEncounters}
             />
@@ -87,11 +99,11 @@ export function GravityView({
       })}
       <Pressable
         onPress={() => onPressPlanet(me.userId)}
-        style={[styles.planet, { left: cx - ME_PLANET_SIZE / 2, top: cy - ME_PLANET_SIZE / 2 }]}
+        style={[styles.planet, { left: mePos.left, top: mePos.top }]}
       >
         <PlanetNode
           planet={me.planet}
-          size={ME_PLANET_SIZE}
+          size={mePos.size}
           label="You"
           isMe
           satellites={me.featuredSatellites}

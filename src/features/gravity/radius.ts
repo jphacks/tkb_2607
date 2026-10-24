@@ -12,8 +12,15 @@ export function mapStrengthToRadius(strength: number, maxRadius: number): number
   return minRadius + (1 - clamped) * (maxRadius - minRadius);
 }
 
-/** 画面サイズから、惑星を配置できる最大半径を計算する */
-export function calculateMaxRadius(width: number, height: number): number {
+/**
+ * 中心(自分の惑星)から、枠(デザインの画面)の一番近い端までの距離をもとに、惑星を配置できる最大半径を計算する。
+ * 座標はデザイン上の値(home-layout.ts の DESIGN_FRAME)で渡す。画面の大きさには依存しない。
+ */
+export function calculateMaxRadius(
+  center: { x: number; y: number },
+  frame: { width: number; height: number },
+): number {
   const { planetSize } = GRAVITY_CONFIG.layout;
-  return Math.min(width, height) / 2 - planetSize;
+  const nearestEdge = Math.min(center.x, frame.width - center.x, center.y, frame.height - center.y);
+  return nearestEdge - planetSize;
 }
