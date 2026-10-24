@@ -23,6 +23,8 @@ export function useViewport() {
   /** 表示領域の大きさ(onLayout で入れる)。拡大の中心と移動の上限に使う */
   const viewportWidth = useSharedValue(0);
   const viewportHeight = useSharedValue(0);
+  /** 全員の惑星が丸ごと見える拡大率(縮小の下限に使う) */
+  const fitZoom = useSharedValue(1);
 
   // つまみ始めたときの拡大率と、指の下にあった変形前の点
   const startZoom = useSharedValue(1);
@@ -48,7 +50,7 @@ export function useViewport() {
     },
     onUpdate: (e) => {
       'worklet';
-      const nextZoom = clampZoom(startZoom.value * e.scale);
+      const nextZoom = clampZoom(startZoom.value * e.scale, fitZoom.value);
       zoom.value = nextZoom;
       // 指の下の点が動かないように移動量を合わせる(2本指のまま動かすと、そのぶん移動もする)
       translateX.value = clampTranslate(
@@ -97,7 +99,11 @@ export function useViewport() {
     viewportHeight.value = height;
   };
 
-  return { gesture, contentStyle, zoom, setViewportSize };
+  const setFitZoom = (value: number) => {
+    fitZoom.value = value;
+  };
+
+  return { gesture, contentStyle, zoom, setViewportSize, setFitZoom };
 }
 
 /** 惑星1つにかける逆向きの拡大(見た目の大きさを上限・下限に収める)。惑星ごとに呼ぶ */

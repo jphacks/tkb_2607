@@ -3,17 +3,40 @@
 // ジェスチャーの処理は UI スレッドで動くので、ここの関数はすべて worklet にしておく。
 import { GRAVITY_CONFIG } from './config';
 
-const { minZoom, maxZoom, planetZoomMin, planetZoomMax } = GRAVITY_CONFIG.viewport;
+const { minZoom, maxZoom, planetZoomMin, planetZoomMax, fitMargin } = GRAVITY_CONFIG.viewport;
 
 function clamp(value: number, min: number, max: number): number {
   'worklet';
   return Math.min(max, Math.max(min, value));
 }
 
-/** 拡大率を許される範囲に収める */
-export function clampZoom(zoom: number): number {
+/** 拡大率を許される範囲に収める。fitZoom は fitZoomFor の結果(全員が見えるまで縮小できる下限) */
+export function clampZoom(zoom: number, fitZoom: number): number {
   'worklet';
-  return clamp(zoom, minZoom, maxZoom);
+  return clamp(zoom, Math.min(minZoom, fitZoom), maxZoom);
+}
+
+/** 画面上の惑星1つ(等倍のときの中心と直径) */
+export type PlanetBox = { centerX: number; centerY: number; size: number };
+
+/**
+ * 全員の惑星が丸ごと画面に入る拡大率(画面の中心を基準に縮小したとき)。
+ * 縮小しても惑星の見た目の大きさは変わらない(planetZoomMin)ので、中心どうしの距離だけが縮む前提で計算する。
+ * 全員が等倍で見えていれば 1 以上になり、そのときは minZoom が下限になる。
+ */
+export function fitZoomFor(planets: PlanetBox[], width: number, height: number): number {
+  const cx = width / 2;
+  const cy = height / 2;
+  let fit = Infinity;
+  for (const p of planets) {
+    const half = (p.size * planetZoomMin) / 2;
+    const dx = Math.abs(p.centerX - cx);
+    const dy = Math.abs(p.centerY - cy);
+    if (dx > 0) fit = Math.min(fit, (cx - fitMargin - half) / dx);
+    if (dy > 0) fit = Math.min(fit, (cy - fitMargin - half) / dy);
+  }
+  // 画面がとても小さいなどで計算できないときは、縮小しない
+  return Number.isFinite(fit) && fit > 0 ? fit : minZoom;
 }
 
 /**

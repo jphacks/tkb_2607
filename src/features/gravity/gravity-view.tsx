@@ -18,6 +18,7 @@ import { calculateMaxRadius, mapStrengthToRadius } from './radius';
 import { calculateStrengths } from './scoring';
 import { useFrozenAngles } from './use-frozen-angles';
 import { usePlanetCounterScaleStyle, useViewport } from './use-viewport';
+import { fitZoomFor } from './viewport';
 
 const PLANET_SIZE = GRAVITY_CONFIG.layout.planetSize;
 /** 自分の惑星(ME_SLOT)から、デザインの画面の端までに収まる最大半径 */
@@ -76,6 +77,28 @@ export function GravityView({
   };
 
   const mePos = toScreen(ME_SLOT.x, ME_SLOT.y, ME_SLOT.size);
+  const placed = visible.map((c) => {
+    const r = radii.get(c.userId) ?? MAX_RADIUS;
+    // 保存済みの角度にいない人(念のため)は、その場で計算した角度を使う
+    const angle = savedAngles?.get(c.userId) ?? computedAngles.get(c.userId) ?? 0;
+    return {
+      candidate: c,
+      ...toScreen(ME_SLOT.x + r * Math.cos(angle), ME_SLOT.y + r * Math.sin(angle), PLANET_SIZE),
+    };
+  });
+
+  // 端で見切れている惑星があれば、全員が丸ごと見えるところまで縮小できるようにする
+  const fitZoom = fitZoomFor(
+    [mePos, ...placed].map(({ left, top, size }) => ({
+      centerX: left + size / 2,
+      centerY: top + size / 2,
+      size,
+    })),
+    width,
+    height,
+  );
+  const { setFitZoom } = viewport;
+  useEffect(() => setFitZoom(fitZoom), [fitZoom, setFitZoom]);
 
   return (
     <GestureDetector gesture={viewport.gesture}>
@@ -88,15 +111,7 @@ export function GravityView({
         }}
       >
         <Animated.View style={[StyleSheet.absoluteFill, viewport.contentStyle]}>
-          {visible.map((c) => {
-            const r = radii.get(c.userId) ?? MAX_RADIUS;
-            // 保存済みの角度にいない人(念のため)は、その場で計算した角度を使う
-            const angle = savedAngles?.get(c.userId) ?? computedAngles.get(c.userId) ?? 0;
-            const { size, left, top } = toScreen(
-              ME_SLOT.x + r * Math.cos(angle),
-              ME_SLOT.y + r * Math.sin(angle),
-              PLANET_SIZE,
-            );
+          {placed.map(({ candidate: c, size, left, top }) => {
             return (
               <Pressable
                 key={c.userId}

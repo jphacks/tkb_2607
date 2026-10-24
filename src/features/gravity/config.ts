@@ -32,12 +32,17 @@ export const GRAVITY_CONFIG = {
 
   /** ズーム・パン(viewport.ts)。拡大率は「背景画像に合わせた等倍」を 1 とする */
   viewport: {
-    /** 拡大率の範囲 */
+    /**
+     * 拡大率の範囲。端で見切れている惑星があるときは、全員が丸ごと見えるところまで
+     * minZoom より小さく縮小できる(viewport.ts の fitZoomFor)
+     */
     minZoom: 1,
     maxZoom: 3,
     /** 惑星の見た目の拡大率はこの範囲にとどめる(超えた分は惑星の間だけが広がる) */
     planetZoomMin: 1,
     planetZoomMax: 1.6,
+    /** 全員が見えるまで縮小するとき、画面の端から空ける余白(px) */
+    fitMargin: 8,
   },
 
   /**
