@@ -20,6 +20,7 @@ import { savePngToCache } from './files';
 import { extractPlanetPalette } from './palette';
 import { newPlanetSeed, renderPlanetPng } from './planet-art';
 import { DEFAULT_PLANET_STYLE_ID } from './planet-styles';
+import { decidePlanetTraits } from './planet-traits';
 import { cutoutWithVision } from './vision';
 
 const MAX_SIZE = 512;
@@ -128,10 +129,12 @@ function padToSquarePng(uri: string): Promise<string> {
   });
 }
 
-// 画面なしで呼ぶ用(デモ用ダミーの作成にも使う)。写真から色を取り出し、水彩で惑星を1つ描く
+// 画面なしで呼ぶ用(デモ用ダミーの作成にも使う)。
+// 写真から色を取り出し、写真の雰囲気で種類と形を決めて、水彩で惑星を1つ描く
 export const generatePlanet: GeneratePlanet = async (photoUri) => {
   const palette = await extractPlanetPalette(photoUri);
-  const imageUri = await renderPlanetPng(palette, DEFAULT_PLANET_STYLE_ID, newPlanetSeed());
+  const traits = decidePlanetTraits(palette);
+  const imageUri = await renderPlanetPng(palette, traits, DEFAULT_PLANET_STYLE_ID, newPlanetSeed());
   return { imageUri, palette };
 };
 

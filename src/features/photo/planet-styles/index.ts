@@ -1,11 +1,10 @@
 // 惑星の画風の一覧。ここに1行足すと、惑星づくりの候補に出る(並び順 = 候補の並び順)。
 import { crayon } from './crayon';
-import { oil } from './oil';
 import { pastel } from './pastel';
 import type { PlanetStyle } from './types';
 import { watercolor } from './watercolor';
 
-export const PLANET_STYLES: PlanetStyle[] = [watercolor, crayon, oil, pastel];
+export const PLANET_STYLES: PlanetStyle[] = [watercolor, crayon, pastel];
 
 /** 画面なしで作るときと、候補を出したときに最初から選んでおく画風 */
 export const DEFAULT_PLANET_STYLE_ID = watercolor.id;
@@ -16,4 +15,4 @@ export function getPlanetStyle(id: string): PlanetStyle {
   return style;
 }
 
-export type { PlanetDraw, PlanetStyle } from './types';
+export type { BrushOptions, PlanetBrush, PlanetStyle } from './types';

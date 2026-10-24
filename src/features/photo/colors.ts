@@ -63,6 +63,46 @@ export function luminance(color: string): number {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 }
 
+/** 色み(h:0〜360 度。0 が赤、120 が緑、240 が青)・鮮やかさ(s:0〜1)・明るさ(l:0〜1) */
+export function toHsl(color: string): { h: number; s: number; l: number } {
+  const { r, g, b } = hexToRgb(color) ?? { r: 0, g: 0, b: 0 };
+  const [x, y, z] = [r / 255, g / 255, b / 255];
+  const max = Math.max(x, y, z);
+  const min = Math.min(x, y, z);
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d === 0) return { h: 0, s: 0, l };
+  const s = d / (1 - Math.abs(2 * l - 1));
+  const h = max === x ? ((y - z) / d + 6) % 6 : max === y ? (z - x) / d + 2 : (x - y) / d + 4;
+  return { h: h * 60, s: Math.min(1, s), l };
+}
+
+/** 色みの差(0〜180 度) */
+export function hueDistance(a: number, b: number): number {
+  const d = Math.abs(a - b) % 360;
+  return d > 180 ? 360 - d : d;
+}
+
+/** 色み target(度)にどれだけ近く、どれだけ鮮やかか(0〜1)。「いちばん青い色」などを選ぶのに使う */
+export function hueScore(color: string, target: number): number {
+  const { h, s, l } = toHsl(color);
+  const closeness = 1 - hueDistance(h, target) / 180;
+  // 白や黒に近い色は、色みがあっても目立たないので低くする
+  const visible = 1 - Math.abs(l - 0.5) * 1.4;
+  return s * closeness * closeness * Math.max(0, visible);
+}
+
+/** 色を少しだけ明るく・暗くゆらがせる(amount:最大の変化量) */
+export function varyColor(color: string, random: () => number, amount: number): string {
+  const t = (random() * 2 - 1) * amount;
+  return t >= 0 ? lighten(color, t) : darken(color, -t);
+}
+
+/** score がいちばん大きい色 */
+export function pickColor(palette: string[], score: (color: string) => number): string {
+  return palette.reduce((a, b) => (score(b) > score(a) ? b : a));
+}
+
 /** いちばん明るい色 */
 export function lightestColor(palette: string[]): string {
   return palette.reduce((a, b) => (luminance(b) > luminance(a) ? b : a));

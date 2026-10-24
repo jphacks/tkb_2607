@@ -20,7 +20,8 @@ import { CircleCropper } from './cropper';
 import { deleteCachedFiles } from './files';
 import { extractPlanetPalette } from './palette';
 import { createPlanetCandidates, newPlanetSeed, type PlanetCandidate } from './planet-art';
-import { DEFAULT_PLANET_STYLE_ID } from './planet-styles';
+import { DEFAULT_PLANET_STYLE_ID, PLANET_STYLES } from './planet-styles';
+import { decidePlanetTraits, describePlanetTraits, type PlanetTraits } from './planet-traits';
 import { cutoutSubjectWithVision, describeError } from './processing';
 
 async function pickPhoto(): Promise<string | null> {
@@ -34,17 +35,24 @@ async function pickPhoto(): Promise<string | null> {
 type PlanetDraft = {
   sourcePhotoUri: string;
   palette: string[];
+  /** 写真の雰囲気から決めた種類と形。作り直しても変えない */
+  traits: PlanetTraits;
   candidates: PlanetCandidate[];
   /** 「この惑星にする」で土台に渡した画像。土台が使うので、作り直しても消さない */
   savedImageUri: string | null;
 };
 
-// 惑星づくり:写真を選ぶ → 色を取り出す → 画風の違う候補を 2×2 で並べる → 1つ選んで決める
+// 惑星づくり:写真を選ぶ → 色を取り出し、雰囲気から種類と形を決める
+// → 画風の違う候補(水彩・クレヨン・パステル)を横に並べる(描けたものから順に出す) → 1つ選んで決める
 export function PlanetCreator({ onComplete }: PlanetCreatorProps) {
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<PlanetDraft | null>(null);
   /** 選んだ候補の画風。作り直しても同じ画風を選んだままにする */
   const [selectedStyleId, setSelectedStyleId] = useState(DEFAULT_PLANET_STYLE_ID);
+
+  /** 描けた候補から順に画面に出す */
+  const showProgress = (candidates: PlanetCandidate[]) =>
+    setDraft((current) => current && { ...current, candidates });
 
   const choose = async () => {
     const uri = await pickPhoto();
@@ -52,9 +60,10 @@ export function PlanetCreator({ onComplete }: PlanetCreatorProps) {
     setBusy(true);
     try {
       const palette = await extractPlanetPalette(uri);
-      const candidates = await createPlanetCandidates(palette, newPlanetSeed());
-      setDraft({ sourcePhotoUri: uri, palette, candidates, savedImageUri: null });
+      const traits = decidePlanetTraits(palette);
+      setDraft({ sourcePhotoUri: uri, palette, traits, candidates: [], savedImageUri: null });
       setSelectedStyleId(DEFAULT_PLANET_STYLE_ID);
+      await createPlanetCandidates(palette, traits, newPlanetSeed(), showProgress);
     } catch (e) {
       Alert.alert('惑星を作れませんでした', describeError(e));
     } finally {
@@ -62,17 +71,18 @@ export function PlanetCreator({ onComplete }: PlanetCreatorProps) {
     }
   };
 
-  // 同じ色・同じ画風のまま、別の模様で作り直す。前の候補は使わないので消す
+  // 同じ色・同じ種類・同じ画風のまま、模様だけ変えて作り直す。前の候補は使わないので消す
   const remake = async () => {
     if (!draft) return;
     setBusy(true);
     try {
-      const candidates = await createPlanetCandidates(draft.palette, newPlanetSeed());
-      setDraft({ ...draft, candidates });
+      await createPlanetCandidates(draft.palette, draft.traits, newPlanetSeed(), showProgress);
       deleteCachedFiles(
         draft.candidates.map((c) => c.imageUri).filter((uri) => uri !== draft.savedImageUri),
       );
     } catch (e) {
+      // 作り直せなかったときは、前の候補に戻す(前の候補の画像はまだ消していない)
+      setDraft(draft);
       Alert.alert('惑星を作り直せませんでした', describeError(e));
     } finally {
       setBusy(false);
@@ -109,8 +119,21 @@ export function PlanetCreator({ onComplete }: PlanetCreatorProps) {
               <View key={`${color}-${i}`} style={[styles.swatch, { backgroundColor: color }]} />
             ))}
           </View>
+          <Text style={styles.traits}>{describePlanetTraits(draft.traits)}</Text>
           <View style={styles.grid}>
-            {draft.candidates.map((candidate) => {
+            {PLANET_STYLES.map((style) => {
+              const candidate = draft.candidates.find((c) => c.styleId === style.id);
+              if (!candidate) {
+                // まだ描いている候補の枠(作っている間だけ出す)
+                return busy ? (
+                  <View key={style.id} style={styles.candidate}>
+                    <View style={[styles.candidateImage, styles.candidatePending]}>
+                      <ActivityIndicator />
+                    </View>
+                    <Text style={styles.candidateLabel}>{style.label}</Text>
+                  </View>
+                ) : null;
+              }
               const isSelected = candidate.styleId === selectedStyleId;
               return (
                 <Pressable
@@ -205,9 +228,10 @@ const styles = StyleSheet.create({
   container: { alignItems: 'center', gap: 16, padding: 24 },
   palette: { flexDirection: 'row', gap: 8 },
   swatch: { width: 32, height: 32, borderRadius: 16 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, width: 312 },
+  // 候補は横1列。画面が狭いときは折り返す
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
   candidate: {
-    width: 150,
+    width: 108,
     alignItems: 'center',
     gap: 4,
     padding: 6,
@@ -216,7 +240,9 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   candidateSelected: { borderColor: '#4C7DFF', backgroundColor: '#EEF3FF' },
-  candidateImage: { width: 132, height: 132 },
+  candidateImage: { width: 90, height: 90 },
+  candidatePending: { alignItems: 'center', justifyContent: 'center' },
+  traits: { fontSize: 14, color: '#333', textAlign: 'center' },
   candidateLabel: { fontSize: 13, color: '#666' },
   candidateLabelSelected: { color: '#1F4FD8', fontWeight: '600' },
 });
