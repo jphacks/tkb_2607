@@ -14,16 +14,21 @@ export const GRAVITY_CONFIG = {
   },
 
   /**
-   * すれ違い回数は累積値で上限がないため、対数スケールで 0〜1 に正規化する。
-   * saturationCount 回前後で頭打ちになり、それ以上は差がつかなくなる。
+   * すれ違い回数を対数スケールで 0〜1 に正規化する。
+   * saturationCount 回以上はすべて saturationCount 回とみなす(DB も16回目以降は記録しない前提)。
    */
   encounterNormalization: {
-    saturationCount: 20,
+    saturationCount: 15,
   },
+
+  /** 名前ラベルを出すのは、すれ違いがこの回数以上の人だけ */
+  labelMinEncounters: 5,
 
   /** 惑星・半径まわりの見た目のパラメータ */
   layout: {
     planetSize: 56,
+    /** 中心に出す自分の惑星の直径(Figma の B01 に合わせた) */
+    mePlanetSize: 94,
     /** 中心からの最小半径 = planetSize * minRadiusFactor */
     minRadiusFactor: 1.5,
   },

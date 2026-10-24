@@ -82,6 +82,26 @@ function createInitialState() {
 }
 
 const state = createInitialState();
+
+/** サーバーと同じく、顔ぶれと角度は週に1回だけ変える(端末のメモリ上だけ) */
+type MockLineup = {
+  userId: UserId;
+  periodStart: string;
+  memberIds: UserId[];
+  angles: Map<UserId, number> | null;
+};
+let lineup: MockLineup | null = null;
+
+/** 今の週の始まり(月曜 0:00、日本時間) */
+function homePeriodStart(now = Date.now()) {
+  const JST = 9 * 60 * 60 * 1000;
+  const DAY = 24 * 60 * 60 * 1000;
+  const jst = new Date(now + JST);
+  const daysSinceMonday = (jst.getUTCDay() + 6) % 7;
+  const mondayJst =
+    Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), jst.getUTCDate()) - daysSinceMonday * DAY;
+  return new Date(mondayJst - JST).toISOString();
+}
 const authListeners = new Set<(user: AuthUser | null) => void>();
 
 function currentUser(): MockUser {
@@ -271,13 +291,21 @@ export const mockSource: DataSource = {
         encounterTimestamps: timestamps.map((t) => new Date(t).toISOString()),
       });
     }
-    // サーバーと同じく、関係がある人を先に、ない人を後ろに並べる(所属団体の一致も関係ありに数える)
-    const myOrganization = me.organization?.trim().toLowerCase() || null;
-    const relation = (c: HomeCandidate) =>
-      c.encounterCount +
-      c.sharedTagCount +
-      (myOrganization !== null && c.organization?.trim().toLowerCase() === myOrganization ? 1 : 0);
-    candidates.sort((x, y) => relation(y) - relation(x));
+    // 今週の顔ぶれがまだなければ選ぶ(サーバーと同じく、関係がある人を先に、ない人を後ろに並べる。
+    // 所属団体の一致も関係ありに数える)
+    const periodStart = homePeriodStart();
+    if (!lineup || lineup.userId !== me.id || lineup.periodStart !== periodStart) {
+      const myOrganization = me.organization?.trim().toLowerCase() || null;
+      const relation = (c: HomeCandidate) =>
+        c.encounterCount +
+        c.sharedTagCount +
+        (myOrganization !== null && c.organization?.trim().toLowerCase() === myOrganization
+          ? 1
+          : 0);
+      const picked = [...candidates].sort((x, y) => relation(y) - relation(x)).slice(0, limit);
+      lineup = { userId: me.id, periodStart, memberIds: picked.map((c) => c.userId), angles: null };
+    }
+    const byId = new Map(candidates.map((c) => [c.userId, c]));
     return {
       me: {
         userId: me.id,
@@ -286,8 +314,21 @@ export const mockSource: DataSource = {
         planet: me.planet,
         featuredSatellites: featured(me),
       },
-      candidates: candidates.slice(0, limit),
+      candidates: lineup.memberIds.flatMap((id) => byId.get(id) ?? []),
+      // 顔ぶれが0人なら並べる人がいないので、計算済み(空)として扱う
+      lineup: {
+        periodStart,
+        angles: lineup.memberIds.length === 0 ? new Map() : lineup.angles,
+      },
     };
+  },
+
+  async saveHomeAngles(periodStart, angles) {
+    await wait();
+    if (!lineup || lineup.userId !== currentUser().id) return false;
+    if (lineup.periodStart !== periodStart || lineup.angles) return false;
+    lineup.angles = new Map(angles);
+    return true;
   },
 
   async getPlanetDetail(userId) {
@@ -344,5 +385,10 @@ export const mockSource: DataSource = {
   async demoAddEncounter(targetUserId) {
     await wait();
     state.encounters.push({ a: currentUser().id, b: targetUserId, at: Date.now() });
+  },
+
+  async demoResetHomeLineup() {
+    await wait();
+    lineup = null;
   },
 };

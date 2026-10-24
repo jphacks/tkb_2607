@@ -86,6 +86,38 @@ export type Database = {
           },
         ];
       };
+      home_lineups: {
+        Row: {
+          angles: Json | null;
+          created_at: string;
+          member_ids: string[];
+          period_start: string;
+          user_id: string;
+        };
+        Insert: {
+          angles?: Json | null;
+          created_at?: string;
+          member_ids: string[];
+          period_start: string;
+          user_id: string;
+        };
+        Update: {
+          angles?: Json | null;
+          created_at?: string;
+          member_ids?: string[];
+          period_start?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'home_lineups_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: true;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       planets: {
         Row: {
           image_path: string | null;
@@ -258,13 +290,16 @@ export type Database = {
         Args: { p_target_user_id: string };
         Returns: undefined;
       };
+      demo_reset_home_lineup: { Args: never; Returns: undefined };
       get_home_candidates: {
         Args: { p_limit?: number };
         Returns: {
+          angle: number;
           encounter_count: number;
           encounter_timestamps: string[];
           featured_satellites: Json;
           last_encounter_at: string;
+          lineup_period_start: string;
           nickname: string;
           // TODO: organization は手動追加(npm run gen:types で正式に上書きする前提)
           organization: string | null;
@@ -275,6 +310,7 @@ export type Database = {
           user_id: string;
         }[];
       };
+      home_period_start: { Args: never; Returns: string };
       issue_ble_token: {
         Args: never;
         Returns: {
@@ -285,6 +321,10 @@ export type Database = {
       report_encounter: {
         Args: { p_detected_at: string; p_rssi: number; p_token: string };
         Returns: Json;
+      };
+      save_home_angles: {
+        Args: { p_angles: Json; p_period_start: string };
+        Returns: boolean;
       };
       set_my_tags: { Args: { p_names: string[] }; Returns: undefined };
     };

@@ -87,9 +87,22 @@ export type HomeCandidate = {
   score?: number;
 };
 
+/**
+ * ホームの顔ぶれ。顔ぶれと角度は週に1回(月曜 0:00、日本時間)だけ変わる。
+ * 半径の材料(すれ違い回数など)は candidates に毎回最新が入る。
+ */
+export type HomeLineup = {
+  /** この顔ぶれの週の始まり(ISO 文字列)。角度を保存するときにそのまま渡す */
+  periodStart: string;
+  /** その週に保存した角度(userId → ラジアン)。まだ計算していなければ null */
+  angles: ReadonlyMap<UserId, number> | null;
+};
+
 export type HomeData = {
   me: HomeUser;
+  /** 週に1回だけ入れ替わる。並び順は選んだときの関係の強さの順 */
   candidates: HomeCandidate[];
+  lineup: HomeLineup;
 };
 
 export type PlanetDetail = {

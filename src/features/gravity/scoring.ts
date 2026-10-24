@@ -19,15 +19,15 @@ export function isSameOrganization(mine: string | null, theirs: string | null): 
 
 /**
  * すれ違い回数を 0〜1 に正規化する。
- * 累積回数は上限がないので対数スケールにし、saturationCount 回前後で頭打ちにする。
+ * 対数スケールにし、saturationCount 回以上はすべて saturationCount 回とみなす(1 になる)。
  * これにより、1人だけ飛び抜けて回数が多くても、他の人のスコアには影響しない
  * (後段の半径マッピングを「絶対スコア」ベースにできる)。
  */
 function normalizeEncounterCount(encounterCount: number): number {
   const { saturationCount } = GRAVITY_CONFIG.encounterNormalization;
   if (encounterCount <= 0) return 0;
-  const normalized = Math.log(1 + encounterCount) / Math.log(1 + saturationCount);
-  return Math.min(1, normalized);
+  const capped = Math.min(encounterCount, saturationCount);
+  return Math.log(1 + capped) / Math.log(1 + saturationCount);
 }
 
 /** タグの Jaccard 係数(共通タグ数 ÷ タグ和集合数)。すでに 0〜1 に収まっている */
