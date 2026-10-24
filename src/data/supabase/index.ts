@@ -10,6 +10,7 @@ import type {
   Satellite,
   SatelliteSummary,
   Tag,
+  UserId,
 } from '@/types/domain';
 
 import { MAX_FEATURED_SATELLITES, type DataSource } from '../source';
@@ -245,6 +246,12 @@ export const supabaseSource: DataSource = {
       getFeatured(userId),
       supabase.rpc('get_home_candidates', { p_limit: limit }),
     ]);
+    const rows = check(candidates) ?? [];
+    // 顔ぶれが0人のときは行がないので、週の始まりだけ別に聞く
+    const periodStart =
+      rows[0]?.lineup_period_start ?? check(await supabase.rpc('home_period_start'));
+    const angles = new Map<UserId, number>();
+    for (const r of rows) if (r.angle !== null) angles.set(r.user_id, r.angle);
     return {
       me: {
         userId,
@@ -252,7 +259,8 @@ export const supabaseSource: DataSource = {
         planet: toPlanet(check(planet)),
         featuredSatellites: featured,
       },
-      candidates: (check(candidates) ?? []).map((r): HomeCandidate => ({
+      lineup: { periodStart, angles: angles.size > 0 ? angles : null },
+      candidates: rows.map((r): HomeCandidate => ({
         userId: r.user_id,
         nickname: r.nickname,
         planet: toPlanet({ image_path: r.planet_image_path, palette: r.palette })!,
@@ -270,6 +278,16 @@ export const supabaseSource: DataSource = {
         encounterTimestamps: r.encounter_timestamps ?? [],
       })),
     };
+  },
+
+  async saveHomeAngles(periodStart, angles) {
+    const saved = check(
+      await getSupabase().rpc('save_home_angles', {
+        p_period_start: periodStart,
+        p_angles: Object.fromEntries(angles),
+      }),
+    );
+    return saved === true;
   },
 
   async getPlanetDetail(userId) {
@@ -333,5 +351,9 @@ export const supabaseSource: DataSource = {
 
   async demoAddEncounter(targetUserId) {
     check(await getSupabase().rpc('demo_add_encounter', { p_target_user_id: targetUserId }));
+  },
+
+  async demoResetHomeLineup() {
+    check(await getSupabase().rpc('demo_reset_home_lineup'));
   },
 };

@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ErrorText, Loading, PrimaryButton, Screen } from '@/components/ui';
-import { useHome } from '@/data';
+import { useHome, useSaveHomeAngles } from '@/data';
 import { GravityView } from '@/features/gravity';
 
 export { RouteErrorBoundary as ErrorBoundary } from '@/components/route-error-boundary';
@@ -11,6 +11,7 @@ export { RouteErrorBoundary as ErrorBoundary } from '@/components/route-error-bo
 // ホーム。引力の描画(GravityView)は引力・描画担当の差し込み口
 export default function HomeScreen() {
   const { data, error, refetch } = useHome(20);
+  const saveAngles = useSaveHomeAngles();
 
   if (!data) {
     return error ? (
@@ -30,6 +31,10 @@ export default function HomeScreen() {
         candidates={data.candidates}
         onPressPlanet={(userId) =>
           router.push({ pathname: '/planet/[userId]', params: { userId } })
+        }
+        angles={data.lineup.angles}
+        onAnglesComputed={(angles) =>
+          saveAngles.mutate({ periodStart: data.lineup.periodStart, angles })
         }
       />
       <SafeAreaView style={styles.menu} edges={['top']} pointerEvents="box-none">
