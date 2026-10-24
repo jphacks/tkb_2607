@@ -118,6 +118,39 @@ export type Database = {
           },
         ];
       };
+      pins: {
+        Row: {
+          created_at: string;
+          target_user_id: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          target_user_id: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          target_user_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pins_target_user_id_fkey';
+            columns: ['target_user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pins_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       planets: {
         Row: {
           image_path: string | null;
@@ -175,24 +208,39 @@ export type Database = {
       };
       profiles: {
         Row: {
+          age_group: string | null;
+          bio: string;
           created_at: string;
+          gender: string | null;
           id: string;
           is_dummy: boolean;
           nickname: string;
+          organization: string | null;
+          sound_id: string | null;
           sound_path: string | null;
         };
         Insert: {
+          age_group?: string | null;
+          bio?: string;
           created_at?: string;
+          gender?: string | null;
           id: string;
           is_dummy?: boolean;
           nickname?: string;
+          organization?: string | null;
+          sound_id?: string | null;
           sound_path?: string | null;
         };
         Update: {
+          age_group?: string | null;
+          bio?: string;
           created_at?: string;
+          gender?: string | null;
           id?: string;
           is_dummy?: boolean;
           nickname?: string;
+          organization?: string | null;
+          sound_id?: string | null;
           sound_path?: string | null;
         };
         Relationships: [];
@@ -297,6 +345,7 @@ export type Database = {
           last_encounter_at: string;
           lineup_period_start: string;
           nickname: string;
+          organization: string;
           palette: Json;
           planet_image_path: string;
           shared_tag_count: number;

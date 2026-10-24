@@ -22,6 +22,7 @@ type MockUser = {
   password: string;
   nickname: string;
   realName: string | null;
+  organization: string | null;
   tagNames: string[];
   planet: Planet | null;
   satellites: Satellite[];
@@ -41,6 +42,7 @@ function createInitialState() {
     password: 'password',
     nickname: ME_FIXTURE.nickname,
     realName: ME_FIXTURE.realName,
+    organization: ME_FIXTURE.organization,
     tagNames: [...ME_FIXTURE.tags],
     planet: { imageUrl: null, palette: ME_FIXTURE.palette },
     satellites: [],
@@ -56,6 +58,7 @@ function createInitialState() {
       password: 'password',
       nickname: f.nickname,
       realName: null,
+      organization: f.organization,
       tagNames: [...f.tags],
       planet: { imageUrl: null, palette: f.palette },
       satellites: [],
@@ -179,6 +182,7 @@ export const mockSource: DataSource = {
       password,
       nickname: '',
       realName: null,
+      organization: null,
       tagNames: [],
       planet: null,
       satellites: [],
@@ -200,16 +204,18 @@ export const mockSource: DataSource = {
       userId: me.id,
       nickname: me.nickname,
       realName: me.realName,
+      organization: me.organization,
       tags: toTags(me.tagNames),
       planet: me.planet,
     };
   },
 
-  async updateMyProfile({ nickname, realName, tagNames }) {
+  async updateMyProfile({ nickname, realName, organization, tagNames }) {
     await wait();
     const me = currentUser();
     me.nickname = nickname;
     me.realName = realName;
+    me.organization = organization;
     me.tagNames = [...new Set(tagNames.map((t) => t.trim()).filter(Boolean))];
     me.tagNames.forEach(tagId);
   },
@@ -275,6 +281,7 @@ export const mockSource: DataSource = {
       candidates.push({
         userId: user.id,
         nickname: user.nickname,
+        organization: user.organization,
         planet: user.planet,
         featuredSatellites: featured(user),
         sharedTagCount: shared,
@@ -284,12 +291,18 @@ export const mockSource: DataSource = {
         encounterTimestamps: timestamps.map((t) => new Date(t).toISOString()),
       });
     }
-    // 今週の顔ぶれがまだなければ選ぶ(サーバーと同じく、関係がある人を先に、ない人を後ろに並べる)
+    // 今週の顔ぶれがまだなければ選ぶ(サーバーと同じく、関係がある人を先に、ない人を後ろに並べる。
+    // 所属団体の一致も関係ありに数える)
     const periodStart = homePeriodStart();
     if (!lineup || lineup.userId !== me.id || lineup.periodStart !== periodStart) {
-      const picked = [...candidates]
-        .sort((x, y) => y.encounterCount + y.sharedTagCount - (x.encounterCount + x.sharedTagCount))
-        .slice(0, limit);
+      const myOrganization = me.organization?.trim().toLowerCase() || null;
+      const relation = (c: HomeCandidate) =>
+        c.encounterCount +
+        c.sharedTagCount +
+        (myOrganization !== null && c.organization?.trim().toLowerCase() === myOrganization
+          ? 1
+          : 0);
+      const picked = [...candidates].sort((x, y) => relation(y) - relation(x)).slice(0, limit);
       lineup = { userId: me.id, periodStart, memberIds: picked.map((c) => c.userId), angles: null };
     }
     const byId = new Map(candidates.map((c) => [c.userId, c]));
@@ -297,6 +310,7 @@ export const mockSource: DataSource = {
       me: {
         userId: me.id,
         nickname: me.nickname,
+        organization: me.organization,
         planet: me.planet,
         featuredSatellites: featured(me),
       },
