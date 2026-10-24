@@ -48,7 +48,7 @@ function DemoSection() {
 
       <Text style={styles.heading}>デモ:ダミーとのすれ違い +1</Text>
       <Text style={styles.meta}>
-        押すとホームの半径にすぐ反映される(本物のすれ違いは30分ごとに反映)。
+        今週の顔ぶれに入っている人なら、押すとホームの半径にすぐ反映される(本物のすれ違いは30分ごとに反映)。顔ぶれにいない人は、上の「選び直す」を押すと入る。
       </Text>
       {dummies?.map((d) => (
         <Pressable

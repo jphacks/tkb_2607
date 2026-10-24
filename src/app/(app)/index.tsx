@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,6 +13,8 @@ export { RouteErrorBoundary as ErrorBoundary } from '@/components/route-error-bo
 export default function HomeScreen() {
   const { data, error, refetch } = useHome(20);
   const saveAngles = useSaveHomeAngles();
+  // 同じ週の角度は1回だけ保存する(保存に失敗して取り直しても、何度も送らないように)
+  const savedPeriod = useRef<string | null>(null);
 
   if (!data) {
     return error ? (
@@ -33,9 +36,12 @@ export default function HomeScreen() {
           router.push({ pathname: '/planet/[userId]', params: { userId } })
         }
         angles={data.lineup.angles}
-        onAnglesComputed={(angles) =>
-          saveAngles.mutate({ periodStart: data.lineup.periodStart, angles })
-        }
+        onAnglesComputed={(angles) => {
+          const { periodStart } = data.lineup;
+          if (savedPeriod.current === periodStart) return;
+          savedPeriod.current = periodStart;
+          saveAngles.mutate({ periodStart, angles });
+        }}
       />
       <SafeAreaView style={styles.menu} edges={['top']} pointerEvents="box-none">
         <MenuButton label="プロフィール" onPress={() => router.push('/profile')} />

@@ -259,7 +259,8 @@ export const supabaseSource: DataSource = {
         planet: toPlanet(check(planet)),
         featuredSatellites: featured,
       },
-      lineup: { periodStart, angles: angles.size > 0 ? angles : null },
+      // 顔ぶれが0人なら並べる人がいないので、計算済み(空)として扱う
+      lineup: { periodStart, angles: rows.length === 0 || angles.size > 0 ? angles : null },
       candidates: rows.map((r): HomeCandidate => ({
         userId: r.user_id,
         nickname: r.nickname,
@@ -284,7 +285,8 @@ export const supabaseSource: DataSource = {
     const saved = check(
       await getSupabase().rpc('save_home_angles', {
         p_period_start: periodStart,
-        p_angles: Object.fromEntries(angles),
+        // 数字でない値が保存されると、その週はホームを読めなくなるので送らない
+        p_angles: Object.fromEntries([...angles].filter(([, angle]) => Number.isFinite(angle))),
       }),
     );
     return saved === true;

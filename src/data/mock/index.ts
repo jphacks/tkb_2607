@@ -301,7 +301,11 @@ export const mockSource: DataSource = {
         featuredSatellites: featured(me),
       },
       candidates: lineup.memberIds.flatMap((id) => byId.get(id) ?? []),
-      lineup: { periodStart, angles: lineup.angles },
+      // 顔ぶれが0人なら並べる人がいないので、計算済み(空)として扱う
+      lineup: {
+        periodStart,
+        angles: lineup.memberIds.length === 0 ? new Map() : lineup.angles,
+      },
     };
   },
 

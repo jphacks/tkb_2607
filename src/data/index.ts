@@ -6,6 +6,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
   AddSatelliteInput,
   EncounterReport,
+  HomeData,
   SavePlanetInput,
   UpdateProfileInput,
   UpdateSatelliteInput,
@@ -132,8 +133,14 @@ export function useSaveHomeAngles() {
       periodStart: string;
       angles: ReadonlyMap<UserId, number>;
     }) => source.saveHomeAngles(periodStart, angles),
-    onSuccess: (saved) => {
+    onSuccess: (saved, { periodStart, angles }) => {
       if (!saved) return invalidate('home');
+      // 次の取り直し(30分後)を待たずに、手元のデータも保存済みにする
+      queryClient.setQueriesData<HomeData>({ queryKey: ['home'] }, (old) =>
+        old && old.lineup.periodStart === periodStart
+          ? { ...old, lineup: { ...old.lineup, angles } }
+          : old,
+      );
     },
   });
 }
