@@ -271,10 +271,13 @@ export const mockSource: DataSource = {
         encounterTimestamps: timestamps.map((t) => new Date(t).toISOString()),
       });
     }
-    // サーバーと同じく、関係がある人を先に、ない人を後ろに並べる
-    candidates.sort(
-      (x, y) => y.encounterCount + y.sharedTagCount - (x.encounterCount + x.sharedTagCount),
-    );
+    // サーバーと同じく、関係がある人を先に、ない人を後ろに並べる(所属団体の一致も関係ありに数える)
+    const myOrganization = me.organization?.trim().toLowerCase() || null;
+    const relation = (c: HomeCandidate) =>
+      c.encounterCount +
+      c.sharedTagCount +
+      (myOrganization !== null && c.organization?.trim().toLowerCase() === myOrganization ? 1 : 0);
+    candidates.sort((x, y) => relation(y) - relation(x));
     return {
       me: {
         userId: me.id,
