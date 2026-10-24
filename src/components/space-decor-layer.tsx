@@ -9,7 +9,7 @@ import {
   Oval,
   useImage,
 } from '@shopify/react-native-skia';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import {
@@ -20,7 +20,8 @@ import {
   SPACE_DECORATIONS,
 } from './space-decorations';
 
-export function SpaceDecorLayer() {
+// 描く内容は画面の大きさだけで決まるので、親(ホーム)がデータの更新で描き直されても描き直さない
+export const SpaceDecorLayer = memo(function SpaceDecorLayer() {
   // 最初は画面サイズで仮に描き、実際の表示領域が分かったら描き直す(GravityView と同じ)
   const windowSize = useWindowDimensions();
   const [area, setArea] = useState<{ width: number; height: number } | null>(null);
@@ -73,14 +74,14 @@ export function SpaceDecorLayer() {
               y={offsetY + d.y * scale - h / 2}
               width={w}
               height={h}
-              fit="fill"
+              fit="contain"
             />
           );
         })}
       </Canvas>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   canvas: { flex: 1 },

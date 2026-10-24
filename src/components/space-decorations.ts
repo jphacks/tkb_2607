@@ -25,7 +25,7 @@ export const DECORATION_BOUNDS = { x: -191.5, y: -426, width: 766, height: 1704 
  */
 export type DecorationKind = 'sparkle' | 'metal' | 'glass' | 'checker';
 
-/** 種類ごとの画像(背景が透明な PNG)。width × height の箱いっぱいに引き伸ばして描く */
+/** 種類ごとの画像(背景が透明な PNG)。縦横比を保ったまま width × height の箱に収めて描く(形が崩れないように) */
 export const DECORATION_IMAGES: Record<DecorationKind, number> = {
   sparkle: require('@/assets/images/home/space-star-sparkle.png'),
   metal: require('@/assets/images/home/space-star-metal.png'),
