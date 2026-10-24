@@ -1,12 +1,13 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NearbyCountPill } from '@/components/nearby-count-pill';
 import { SpaceBackground } from '@/components/space-background';
 import { ErrorText, Loading, PrimaryButton, Screen } from '@/components/ui';
-import { useHome } from '@/data';
+import { useHome, useSaveHomeAngles } from '@/data';
 import { GravityView } from '@/features/gravity';
 import { color, radius, space } from '@/theme/tokens';
 
@@ -20,6 +21,9 @@ const bellIcon = require('@/assets/images/home/bell-icon.png');
 export default function HomeScreen() {
   const { data, error, refetch } = useHome(20);
   const insets = useSafeAreaInsets();
+  const saveAngles = useSaveHomeAngles();
+  // 同じ週の角度は1回だけ保存する(保存に失敗して取り直しても、何度も送らないように)
+  const savedPeriod = useRef<string | null>(null);
 
   if (!data) {
     return error ? (
@@ -44,6 +48,13 @@ export default function HomeScreen() {
             ? router.push('/profile')
             : router.push({ pathname: '/planet/[userId]', params: { userId } })
         }
+        angles={data.lineup.angles}
+        onAnglesComputed={(angles) => {
+          const { periodStart } = data.lineup;
+          if (savedPeriod.current === periodStart) return;
+          savedPeriod.current = periodStart;
+          saveAngles.mutate({ periodStart, angles });
+        }}
       />
       {/* ピン止め一覧・お知らせの画面はまだないので、今は見た目だけ。画面ができたら Pressable にする */}
       <View style={[styles.actions, { top: insets.top + space.sm }]} pointerEvents="none">

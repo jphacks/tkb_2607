@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Screen } from '@/components/ui';
 import { env } from '@/config/env';
-import { useDemoAddEncounter, useDummyUsers } from '@/data';
+import { useDemoAddEncounter, useDemoResetHomeLineup, useDummyUsers } from '@/data';
 import { useEncounterLog } from '@/features/encounter';
 
 // 検知ログ(BLE の検証用)と、デモ操作(EXPO_PUBLIC_DEMO_MODE=true のときだけ)
@@ -29,9 +29,27 @@ export default function DebugScreen() {
 function DemoSection() {
   const { data: dummies } = useDummyUsers();
   const addEncounter = useDemoAddEncounter();
+  const resetLineup = useDemoResetHomeLineup();
   return (
     <View style={styles.section}>
+      <Text style={styles.heading}>デモ:ホームの顔ぶれ</Text>
+      <Text style={styles.meta}>
+        顔ぶれと角度は週に1回(月曜
+        0:00)だけ選び直す。ダミーや新しい人を足したあとは、これで今すぐ選び直す。
+      </Text>
+      <Pressable
+        onPress={() => resetLineup.mutate()}
+        style={styles.row}
+        disabled={resetLineup.isPending}
+      >
+        <Text>顔ぶれを今すぐ選び直す</Text>
+        <Text>{resetLineup.isSuccess ? '済み' : ''}</Text>
+      </Pressable>
+
       <Text style={styles.heading}>デモ:ダミーとのすれ違い +1</Text>
+      <Text style={styles.meta}>
+        今週の顔ぶれに入っている人なら、押すとホームの半径にすぐ反映される(本物のすれ違いは30分ごとに反映)。顔ぶれにいない人は、上の「選び直す」を押すと入る。
+      </Text>
       {dummies?.map((d) => (
         <Pressable
           key={d.userId}
