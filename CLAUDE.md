@@ -54,6 +54,9 @@
 5. 作業を終える前に `npx tsc --noEmit` と `npx expo lint` を通す。
 6. main に入れる前(PR を作る前)は `/pre-merge` を実行し、PR の本文もそれに書かせる。PR の本文がチームの作業ログになる。
 7. 分からない仕様は推測で埋めず、ユーザーに確認する。
+8. **前の画面に戻る操作は、左上の「← Back」ボタンだけにする**(Figma の全画面がこの形)。画面の端からのスワイプで戻る操作は、`src/app/_layout.tsx` と `src/app/(app)/_layout.tsx` の `Stack` の `gestureEnabled: false` で切ってある。
+   - 新しい画面は `SpaceScreen`(`src/components/space.tsx`)を使えば Back が出る。独自の見た目の画面は `BackButton` を置く。開発用の画面(`lab/`・`debug`)は標準のヘッダーの戻るボタンでよい。
+   - 画面ごとに `gestureEnabled: true` や `fullScreenGestureEnabled` を付けない。Back を出さない画面(`back={false}`)は、戻る先がない画面(初回のプロフィール登録・惑星作成)だけにする。
 
 ## 5. データ層の使い方
 

@@ -21,16 +21,14 @@ export const DECORATION_BOUNDS = { x: -191.5, y: -426, width: 766, height: 1704 
  * - sparkle:小さい白い星(光のにじみ込み)
  * - metal:金属のひし形の星
  * - glass:大きいガラスの星
- * - checker:市松模様のドット(にじみ込み)
  */
-export type DecorationKind = 'sparkle' | 'metal' | 'glass' | 'checker';
+export type DecorationKind = 'sparkle' | 'metal' | 'glass';
 
 /** 種類ごとの画像(背景が透明な PNG)。縦横比を保ったまま width × height の箱に収めて描く(形が崩れないように) */
 export const DECORATION_IMAGES: Record<DecorationKind, number> = {
   sparkle: require('@/assets/images/home/space-star-sparkle.png'),
   metal: require('@/assets/images/home/space-star-metal.png'),
   glass: require('@/assets/images/home/space-star-glass.png'),
-  checker: require('@/assets/images/home/space-checker.png'),
 };
 
 export type SpaceDecoration = {
@@ -60,15 +58,6 @@ export const SPACE_DECORATIONS: SpaceDecoration[] = [
   { kind: 'glass', x: 468.8, y: 134.9, width: 91.8, height: 100 },
   { kind: 'glass', x: -102.4, y: 595.9, width: 87.5, height: 95.3 },
   { kind: 'glass', x: -39.2, y: 694.6, width: 86.8, height: 94.7 },
-  { kind: 'checker', x: 349.5, y: 222.5, width: 47, height: 45 },
-  { kind: 'checker', x: 91, y: 170.5, width: 66, height: 63 },
-  { kind: 'checker', x: 350, y: 793, width: 52, height: 52 },
-  { kind: 'checker', x: 8.5, y: 996.1, width: 66.2, height: 63.2 },
-  { kind: 'checker', x: 260.3, y: -302.7, width: 68, height: 64.9 },
-  { kind: 'checker', x: 521.5, y: 1194.1, width: 59.4, height: 59.4 },
-  { kind: 'checker', x: 466.3, y: 636.7, width: 45.6, height: 45.6 },
-  { kind: 'checker', x: -22.3, y: 1078.4, width: 35.9, height: 34.4 },
-  { kind: 'checker', x: 458.4, y: 953.2, width: 64.5, height: 61.5 },
   { kind: 'metal', x: 112.5, y: 44, width: 43, height: 72 },
   { kind: 'metal', x: 336, y: 132.5, width: 42, height: 79 },
   { kind: 'metal', x: 34.5, y: 336, width: 47, height: 70 },
@@ -156,20 +145,31 @@ export type OrbitEllipse = {
   /** 横幅・縦幅(B01 の座標での長さ) */
   width: number;
   height: number;
+  /** 線の濃さ(0〜1)。ORBIT_STYLE.opacity に掛ける */
+  opacity: number;
+  /** 線の太さと点の長さ・間隔の倍率 */
+  scale: number;
 };
 
-/** 軌道の点線(内側から順)。Figma の B01 の「Group 3」 */
-export const ORBITS: OrbitEllipse[] = [
-  { cx: 192, cy: 417, width: 200.8, height: 206 },
-  { cx: 193.4, cy: 420.5, width: 260.2, height: 267 },
-  { cx: 190.6, cy: 421.5, width: 326.5, height: 335 },
-  { cx: 193, cy: 421, width: 456, height: 456 },
-  { cx: 188.5, cy: 440.5, width: 621, height: 621 },
-  { cx: 191.5, cy: 443.5, width: 661.7, height: 679 },
-];
+/** 自分の惑星の中心(B01 の座標)。引力側の home-layout.ts の ME_SLOT と同じ値 */
+const ME_CENTER = { x: 196, y: 412 };
 
 /**
- * 軌道の点線の見た目。線の太さ・点の長さ・間隔も B01 の座標での長さなので、拡大・縮小に合わせて変わる。
+ * 自分の惑星から広がる点線の輪(内側から順)。Figma の tuzuya ページ「放射線を薄くしていくVer」の「Group 3」。
+ * 外側ほど薄く、輪と輪の間隔が広い。大きさ・濃さ・点の倍率は Figma の値。
+ * Figma では輪ごとに中心が数 px〜28px ずれているが、自分の惑星から広がる輪なので中心は自分の惑星にそろえる
+ */
+export const ORBITS: OrbitEllipse[] = [
+  { width: 200.8, height: 206, opacity: 1, scale: 1 },
+  { width: 286.5, height: 293.9, opacity: 0.6, scale: 0.877 },
+  { width: 430, height: 430, opacity: 0.4, scale: 0.943 },
+  { width: 621, height: 621, opacity: 0.3, scale: 1 },
+  { width: 828, height: 849.6, opacity: 0.1, scale: 1.251 },
+].map((o) => ({ cx: ME_CENTER.x, cy: ME_CENTER.y, ...o }));
+
+/**
+ * 軌道の点線の見た目(輪ごとの濃さ・倍率は ORBITS)。線の太さ・点の長さ・間隔も B01 の座標での長さなので、
+ * 拡大・縮小に合わせて変わる。
  * Figma では白い点線(1.4 描いて 2.5 空ける)にざらつき(Texture)をかけているので、アプリでは薄くして近づけている
  */
 export const ORBIT_STYLE = {

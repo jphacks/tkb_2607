@@ -15,11 +15,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { type Credentials } from '@/data';
-import { color, ja, typography } from '@/theme/tokens';
+import { color, ja, layout, typography } from '@/theme/tokens';
 
 import { PillButton } from './pill';
 import { LOGO_ASPECT } from './splash';
-import { Sheet, SpaceBackdrop } from './space';
+import { BackButton, Sheet, SpaceBackdrop } from './space';
 import { ErrorText } from './ui';
 
 const logo = require('@/assets/images/ui/logo.png');
@@ -32,11 +32,14 @@ export function AuthForm({
   submitLabel,
   onSubmit,
   footer,
+  back = false,
 }: {
   submitLabel: string;
   onSubmit: (credentials: Credentials) => Promise<void>;
   /** カードの一番下(「新規登録」へのリンクなど) */
   footer?: ReactNode;
+  /** 左上に「← Back」を出す(ログイン画面から開いた新規登録など) */
+  back?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
@@ -102,6 +105,11 @@ export function AuthForm({
           {footer}
         </Sheet>
       </ScrollView>
+      {back && (
+        <View style={[styles.header, { top: insets.top + 6 }]}>
+          <BackButton />
+        </View>
+      )}
     </View>
   );
 }
@@ -161,6 +169,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: color.bg.space },
   decor: { position: 'absolute', top: 0, left: 0, width: '100%', aspectRatio: 1191 / 792 },
   content: { flexGrow: 1, justifyContent: 'flex-end' },
+  header: { position: 'absolute', left: layout.screenX, minHeight: 28, justifyContent: 'center' },
   logo: {
     width: '100%',
     maxWidth: 397,

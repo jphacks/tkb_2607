@@ -2,7 +2,7 @@
 // - 背景:Gradient/Space Background(中心が濃い紫の放射グラデーション)
 // - ヘッダー:「← Back」と右上の丸いボタン、その下に画面タイトルと説明
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useRootNavigationState } from 'expo-router';
 import type { ReactNode } from 'react';
 import {
   Pressable,
@@ -22,6 +22,38 @@ const metalStar = require('@/assets/images/ui/metal-star.png');
 /** 画面いっぱいの宇宙の背景 */
 export function SpaceBackdrop() {
   return <View style={[StyleSheet.absoluteFill, styles.backdrop]} pointerEvents="none" />;
+}
+
+/**
+ * 前の画面に戻る「← Back」ボタン。戻る操作はこのボタンだけにする(スワイプで戻る操作は切ってある)。
+ * 戻る先がない画面(最初の画面など)では何も出さない
+ */
+export function BackButton() {
+  // router.canGoBack() は、画面を開いた直後の描画ではまだ移動前の状態を見て false を返す。
+  // 描画中の画面遷移の状態から、戻る先があるかを調べる
+  const canGoBack = hasHistory(useRootNavigationState());
+  if (!canGoBack) return null;
+  return (
+    <Pressable
+      onPress={() => router.back()}
+      style={styles.back}
+      accessibilityRole="button"
+      accessibilityLabel="戻る"
+      hitSlop={8}
+    >
+      <Text style={styles.backArrow}>←</Text>
+      <Text style={styles.backLabel}>Back</Text>
+    </Pressable>
+  );
+}
+
+type NavState = { index?: number; routes?: { state?: NavState }[] };
+
+/** 今開いている画面までのどこかの Stack に、1つ前の画面があるか */
+function hasHistory(state: NavState | undefined): boolean {
+  if (!state?.routes?.length) return false;
+  const index = state.index ?? state.routes.length - 1;
+  return index > 0 || hasHistory(state.routes[index]?.state);
 }
 
 /** ぼんやり光る白い星(飾り)。x・y は画面の左上からの位置 */
@@ -104,25 +136,12 @@ export function SpaceScreen({
   children,
 }: SpaceScreenProps) {
   const insets = useSafeAreaInsets();
-  const showBack = back && router.canGoBack();
 
   const header = (
     <View style={{ paddingTop: insets.top + 6 }}>
       <View style={styles.headerRow}>
-        {showBack ? (
-          <Pressable
-            onPress={() => router.back()}
-            style={styles.back}
-            accessibilityRole="button"
-            accessibilityLabel="戻る"
-            hitSlop={8}
-          >
-            <Text style={styles.backArrow}>←</Text>
-            <Text style={styles.backLabel}>Back</Text>
-          </Pressable>
-        ) : (
-          <View />
-        )}
+        {/* Back がなくても右上のボタンが右に寄るよう、左側の枠は残す */}
+        <View>{back && <BackButton />}</View>
         {headerRight}
       </View>
       {title !== undefined && (
