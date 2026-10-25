@@ -4,8 +4,11 @@
 // 距離は、端末で実際に見えている範囲の端までを使うので、縦横比の違う端末では少し変わる
 // (縦長の画面では縦の方向ほど遠くまで広がる)。ホームの右上のボタン・左下のピルの場所は避ける。
 // 角度の重なりの判定もこの距離で行うので、角度を計算したときの画面の大きさで結果が変わることがある。
-import { useEffect, useRef, useState } from 'react';
+// ズーム・パンは、その上から画面全体にかける変形(use-viewport.ts)だけで行い、配置の計算には触れない。
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
+import Animated, { type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PlanetNode } from '@/components/planet-node';
@@ -23,7 +26,10 @@ import {
 } from './home-layout';
 import { blendStrengthsWithRank, calculateMaxRadiusAt, mapStrengthToRadius } from './radius';
 import { calculateStrengths } from './scoring';
+import { SpaceCameraLayer } from './space-camera-layer';
 import { useFrozenAngles } from './use-frozen-angles';
+import { usePlanetCounterScaleStyle, useViewport } from './use-viewport';
+import { fitZoomFor } from './viewport';
 
 const PLANET_SIZE = GRAVITY_CONFIG.layout.planetSize;
 
@@ -54,6 +60,25 @@ export type GravityLayoutOverrides = {
   visibleMarginFactor?: number;
 };
 
+/** 惑星1つぶんの箱。画面全体を拡大しても、惑星の見た目の大きさは上限・下限の範囲にとどめる */
+// 押せる範囲(Pressable)ごと縮め戻すので、見た目の大きさと押せる範囲が一致する(拡大しても隣の惑星と取り合わない)
+function ZoomCompensated({
+  zoom,
+  left,
+  top,
+  children,
+}: {
+  zoom: SharedValue<number>;
+  left: number;
+  top: number;
+  children: ReactNode;
+}) {
+  const counterScale = usePlanetCounterScaleStyle(zoom);
+  return (
+    <Animated.View style={[styles.planet, { left, top }, counterScale]}>{children}</Animated.View>
+  );
+}
+
 type Props = GravityViewProps & {
   /** 角度の決め方。練習場で見比べるためのもの(契約外)。省略時は config.ts の値 */
   angularMode?: AngularMode;
@@ -75,6 +100,7 @@ export function GravityView({
   const [area, setArea] = useState<{ width: number; height: number } | null>(null);
   const { width, height } = area ?? windowSize;
   const { scale, offsetX, offsetY } = fitDesign(width, height);
+  const viewport = useViewport();
 
   const rankBlend = layoutOverrides?.rankBlend ?? GRAVITY_CONFIG.layout.rankBlend;
   const marginFactor =
@@ -130,51 +156,76 @@ export function GravityView({
   };
 
   const mePos = toScreen(ME_SLOT.x, ME_SLOT.y, ME_SLOT.size);
+  const placed = visible.map((c) => {
+    // 保存済みの角度にいない人(念のため)は、その場で計算した角度を使う
+    const angle = savedAngles?.get(c.userId) ?? computedAngles.get(c.userId) ?? 0;
+    const r = radiusAt(c.userId, angle);
+    return {
+      candidate: c,
+      ...toScreen(ME_SLOT.x + r * Math.cos(angle), ME_SLOT.y + r * Math.sin(angle), PLANET_SIZE),
+    };
+  });
+
+  // 端で見切れている惑星があれば、全員が丸ごと見えるところまで縮小できるようにする
+  const fitZoom = fitZoomFor(
+    [mePos, ...placed].map(({ left, top, size }) => ({
+      centerX: left + size / 2,
+      centerY: top + size / 2,
+      size,
+    })),
+    width,
+    height,
+  );
+  const { setFitZoom } = viewport;
+  useEffect(() => setFitZoom(fitZoom), [fitZoom, setFitZoom]);
 
   return (
-    <View
-      style={styles.space}
-      onLayout={(e) =>
-        setArea({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })
-      }
-    >
-      {visible.map((c) => {
-        // 保存済みの角度にいない人(念のため)は、その場で計算した角度を使う
-        const angle = savedAngles?.get(c.userId) ?? computedAngles.get(c.userId) ?? 0;
-        const r = radiusAt(c.userId, angle);
-        const { size, left, top } = toScreen(
-          ME_SLOT.x + r * Math.cos(angle),
-          ME_SLOT.y + r * Math.sin(angle),
-          PLANET_SIZE,
-        );
-        return (
-          <Pressable
-            key={c.userId}
-            onPress={() => onPressPlanet(c.userId)}
-            style={[styles.planet, { left, top }]}
-          >
-            <PlanetNode
-              planet={c.planet}
-              size={size}
-              label={c.nickname}
-              showLabel={c.encounterCount >= GRAVITY_CONFIG.labelMinEncounters}
-            />
-          </Pressable>
-        );
-      })}
-      <Pressable
-        onPress={() => onPressPlanet(me.userId)}
-        style={[styles.planet, { left: mePos.left, top: mePos.top }]}
+    <GestureDetector gesture={viewport.gesture}>
+      <View
+        style={styles.space}
+        onLayout={(e) => {
+          const { width: w, height: h } = e.nativeEvent.layout;
+          setArea({ width: w, height: h });
+          viewport.setViewportSize(w, h);
+        }}
       >
-        <PlanetNode
-          planet={me.planet}
-          size={mePos.size}
-          label="You"
-          isMe
-          satellites={me.featuredSatellites}
+        {/* 軌道の点線と星の飾り。惑星と同じカメラで動く(背景のグラデーションは画面側で、動かない) */}
+        <SpaceCameraLayer
+          zoom={viewport.zoom}
+          translateX={viewport.translateX}
+          translateY={viewport.translateY}
+          width={width}
+          height={height}
         />
-      </Pressable>
-    </View>
+        <Animated.View style={[StyleSheet.absoluteFill, viewport.contentStyle]}>
+          {placed.map(({ candidate: c, size, left, top }) => {
+            return (
+              <ZoomCompensated key={c.userId} zoom={viewport.zoom} left={left} top={top}>
+                <Pressable onPress={() => onPressPlanet(c.userId)}>
+                  <PlanetNode
+                    planet={c.planet}
+                    size={size}
+                    label={c.nickname}
+                    showLabel={c.encounterCount >= GRAVITY_CONFIG.labelMinEncounters}
+                  />
+                </Pressable>
+              </ZoomCompensated>
+            );
+          })}
+          <ZoomCompensated zoom={viewport.zoom} left={mePos.left} top={mePos.top}>
+            <Pressable onPress={() => onPressPlanet(me.userId)}>
+              <PlanetNode
+                planet={me.planet}
+                size={mePos.size}
+                label="You"
+                isMe
+                satellites={me.featuredSatellites}
+              />
+            </Pressable>
+          </ZoomCompensated>
+        </Animated.View>
+      </View>
+    </GestureDetector>
   );
 }
 
