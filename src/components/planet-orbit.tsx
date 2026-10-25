@@ -225,8 +225,10 @@ export function PlanetOrbit({
   return (
     <GestureDetector gesture={pan}>
       <View style={{ height: g.height * k }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
-        {/* 重なり順:軌道の奥 → 奥の衛星 → 惑星 → 軌道の手前 → 手前の衛星 */}
-        <OrbitLine arc={back} zIndex={0} />
+        {/* 重なり順は描く順で決める:軌道の奥 → 奥の衛星 → 惑星 → 軌道の手前 → 手前の衛星。
+            衛星は奥と手前の両方に置き、いる側だけを見せる(zIndex を動かすと、並べ替えに巻き込まれた
+            軌道の手前の Canvas が消えるため) */}
+        <OrbitLine arc={back} />
         {satellites.map((s, i) => (
           <OrbitingSatellite
             key={s.id}
@@ -235,6 +237,7 @@ export function PlanetOrbit({
             rotation={rotation}
             orbit={orbit}
             size={satelliteSize}
+            layer="back"
           />
         ))}
         <Pressable
@@ -247,15 +250,26 @@ export function PlanetOrbit({
         >
           <PlanetBody planet={planet} size={planetSize} />
         </Pressable>
-        <OrbitLine arc={front} zIndex={3} />
+        <OrbitLine arc={front} />
+        {satellites.map((s, i) => (
+          <OrbitingSatellite
+            key={s.id}
+            satellite={s}
+            baseAngle={baseAngles[i]}
+            rotation={rotation}
+            orbit={orbit}
+            size={satelliteSize}
+            layer="front"
+          />
+        ))}
       </View>
     </GestureDetector>
   );
 }
 
-function OrbitLine({ arc, zIndex }: { arc: { path: SkPath; gap: number }; zIndex: number }) {
+function OrbitLine({ arc }: { arc: { path: SkPath; gap: number } }) {
   return (
-    <Canvas style={[StyleSheet.absoluteFill, { zIndex }]} pointerEvents="none">
+    <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
       <Path
         path={arc.path}
         style="stroke"
@@ -275,21 +289,25 @@ function OrbitingSatellite({
   rotation,
   orbit,
   size,
+  layer,
 }: {
   satellite: SatelliteSummary;
   baseAngle: number;
   rotation: SharedValue<number>;
   orbit: Orbit;
   size: number;
+  /** front:惑星と軌道の手前より前に置く方 / back:惑星の後ろに置く方。軌道のいる側の方だけを見せる */
+  layer: 'front' | 'back';
 }) {
   const style = useAnimatedStyle(() => {
     const t = baseAngle + rotation.get();
     const { x, y } = orbitPoint(orbit, t);
-    // 手前の半分は惑星と軌道の手前より前、奥の半分は惑星の後ろ。奥ほど少し小さく
+    // 手前の半分(sin(t) > 0)にいるときは front、奥の半分にいるときは back を見せる。奥ほど少し小さく
+    const inFront = Math.sin(t) > 0;
     const depth = (Math.sin(t) + 1) / 2;
     const scale = 0.78 + 0.22 * depth;
     return {
-      zIndex: Math.sin(t) > 0 ? 4 : 1,
+      opacity: inFront === (layer === 'front') ? 1 : 0,
       transform: [{ translateX: x - size / 2 }, { translateY: y - size / 2 }, { scale }],
     };
   });
@@ -309,6 +327,6 @@ function OrbitingSatellite({
 }
 
 const styles = StyleSheet.create({
-  planet: { position: 'absolute', zIndex: 2 },
+  planet: { position: 'absolute' },
   satellite: { position: 'absolute', left: 0, top: 0 },
 });
