@@ -1,12 +1,18 @@
 // ズーム・パンのジェスチャーと、画面全体・惑星にかける変形(アニメーションするスタイル)をまとめるフック。
 // 2本指でつまむと拡大・縮小(指の真ん中を中心に)、1本指でなぞると移動する。
 // 惑星の論理的な配置は変えず、ここで作る transform だけで見た目を変える。
+import { useCallback } from 'react';
 import {
   usePanGesture,
   usePinchGesture,
   useSimultaneousGestures,
 } from 'react-native-gesture-handler';
-import { useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
+import {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated';
 
 import {
   anchorUnderFocal,
@@ -94,14 +100,28 @@ export function useViewport() {
     ],
   }));
 
-  const setViewportSize = (width: number, height: number) => {
-    viewportWidth.value = width;
-    viewportHeight.value = height;
-  };
+  // shared value は React の決まり(描画中に値を書き換えない)に合わせて .set() / .get() で読み書きする。
+  // 画面側の useEffect の依存に入るので、描き直しのたびに作り直さない(useCallback)。
+  // 作り直すと「関数が変わった」と判断され、値が同じでも毎回呼び直される
+  const setViewportSize = useCallback(
+    (width: number, height: number) => {
+      viewportWidth.set(width);
+      viewportHeight.set(height);
+    },
+    [viewportWidth, viewportHeight],
+  );
 
-  const setFitZoom = (value: number) => {
-    fitZoom.value = value;
-  };
+  const setFitZoom = useCallback(
+    (value: number) => {
+      fitZoom.set(value);
+      // 縮小の下限が上がったとき(見切れていた惑星が内側に来たなど)、今の拡大率が下限より小さければ下限まで戻す。
+      // 戻さないと、次につまむまで縮小しすぎた状態が残り、つまんだ瞬間に急に跳ぶ
+      const current = zoom.get();
+      const allowed = clampZoom(current, value);
+      if (allowed !== current) zoom.set(withTiming(allowed));
+    },
+    [fitZoom, zoom],
+  );
 
   return { gesture, contentStyle, zoom, translateX, translateY, setViewportSize, setFitZoom };
 }
