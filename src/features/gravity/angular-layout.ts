@@ -1,9 +1,15 @@
 // 惑星の角度(中心から見た方向)を決める。スコア計算・半径マッピング・描画とは関心を分ける。
-// 入力(userId → 半径)だけから結果が決まる純粋関数にして、同じ顔ぶれなら毎回同じ配置になるようにする。
+// 入力(userId → 強さ と、方向ごとの距離の求め方)だけから結果が決まる純粋関数にして、同じ顔ぶれなら毎回同じ配置になるようにする。
 // 角度は週次更新(顔ぶれが変わるとき)だけ計算し直し、30分ごとの距離の更新では呼び直さない前提。
 import type { UserId } from '@/types/domain';
 
 import { GRAVITY_CONFIG, type AngularMode } from './config';
+
+/**
+ * userId の人を angle(ラジアン)の方向に置いたときの、中心からの距離(px)。
+ * 画面の縦横で最大半径が変わるので、距離は方向によって変わる
+ */
+export type RadiusAt = (userId: UserId, angle: number) => number;
 
 const TWO_PI = Math.PI * 2;
 /** 黄金比 φ。N / φ² がひまわりの種の並びと同じ「飛ばし幅」になる */
@@ -11,7 +17,10 @@ const PHI = (1 + Math.sqrt(5)) / 2;
 /** 黄金角(約137.5°)= 2π / φ² */
 const GOLDEN_ANGLE = TWO_PI / (PHI * PHI);
 
-type Member = { userId: UserId; radius: number; jitter: number };
+type Member = { userId: UserId; jitter: number };
+
+/** 中心から見た位置(px)と、中心からの距離 */
+type Placement = { x: number; y: number; radius: number };
 
 function gcd(a: number, b: number): number {
   return b === 0 ? a : gcd(b, a % b);
@@ -42,25 +51,19 @@ function hashToUnit(text: string): number {
   return ((hash >>> 0) / 0xffffffff) * 2 - 1;
 }
 
-/** 半径 ra・rb、角度の差 dTheta の2点の距離(余弦定理) */
-function distanceBetween(ra: number, rb: number, dTheta: number): number {
-  return Math.sqrt(Math.max(0, ra * ra + rb * rb - 2 * ra * rb * Math.cos(dTheta)));
-}
-
-/** 強さ順(半径が小さい順)に並べる。同じ半径なら userId 順にして結果を安定させる */
-function sortByStrength(radii: Map<UserId, number>): { userId: UserId; radius: number }[] {
-  return [...radii.entries()]
-    .map(([userId, radius]) => ({ userId, radius }))
-    .sort(
-      (a, b) => a.radius - b.radius || (a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0),
-    );
+/** 強さ順(強い順 = 近い順)に並べる。同じ強さなら userId 順にして結果を安定させる */
+function sortByStrength(strengths: Map<UserId, number>): UserId[] {
+  return [...strengths.entries()]
+    .sort(([idA, a], [idB, b]) => b - a || (idA < idB ? -1 : idA > idB ? 1 : 0))
+    .map(([userId]) => userId);
 }
 
 /**
  * レール方式の本体。occupant[s] は s 番目のレールに乗っている人(members の添字)。
- * ひまわりの順番で割り当てたあと、悪さ(重なり・似た半径が隣)が減る入れ替えを繰り返す。
+ * ひまわりの順番で割り当てたあと、悪さ(重なり・似た距離が隣)が減る入れ替えを繰り返す。
+ * 悪さは、そのレールの方向の距離(radiusAt)で置いた、実際の位置で判定する
  */
-function assignRails(members: Member[]): number[] {
+function assignRails(members: Member[], radiusAt: RadiusAt): number[] {
   const { startAngle, similarRadiusPx, overlapMarginFactor, overlapWeight, similarityWeight } =
     GRAVITY_CONFIG.angular;
   const n = members.length;
@@ -73,17 +76,25 @@ function assignRails(members: Member[]): number[] {
     occupant[(rank * stride) % n] = rank;
   });
 
-  const angleAt = (slot: number) => startAngle + slot * railGap + members[occupant[slot]].jitter;
+  // 入れ替えのたびに計算し直さないよう、「rank の人を slot のレールに置いたときの位置」を先に全部求めておく
+  const placements: Placement[][] = members.map((member) =>
+    Array.from({ length: n }, (_, slot) => {
+      const angle = startAngle + slot * railGap + member.jitter;
+      const radius = radiusAt(member.userId, angle);
+      return { x: radius * Math.cos(angle), y: radius * Math.sin(angle), radius };
+    }),
+  );
+  const placeAt = (slot: number) => placements[occupant[slot]][slot];
   const isAdjacent = (s: number, t: number) => {
     const d = Math.abs(s - t);
     return d === 1 || d === n - 1;
   };
 
-  /** レール s と t に乗っている2人の悪さ。重なりは全ペア、似た半径は隣のレールどうしだけ見る */
+  /** レール s と t に乗っている2人の悪さ。重なりは全ペア、似た距離は隣のレールどうしだけ見る */
   const pairCost = (s: number, t: number) => {
-    const a = members[occupant[s]];
-    const b = members[occupant[t]];
-    const distance = distanceBetween(a.radius, b.radius, angleAt(s) - angleAt(t));
+    const a = placeAt(s);
+    const b = placeAt(t);
+    const distance = Math.hypot(a.x - b.x, a.y - b.y);
     let cost = overlapWeight * Math.max(0, (minDistance - distance) / minDistance);
     if (isAdjacent(s, t)) {
       cost += similarityWeight * Math.max(0, 1 - Math.abs(a.radius - b.radius) / similarRadiusPx);
@@ -128,33 +139,33 @@ function assignRails(members: Member[]): number[] {
 }
 
 /**
- * userId → 半径(px)から、userId → 角度(ラジアン)を計算する。
- * 半径は radius.ts の mapStrengthToRadius の結果を渡す(半径が小さい = 関係が強い)。
+ * userId → 強さ(0〜1、大きいほど関係が強い)から、userId → 角度(ラジアン)を計算する。
+ * 順番の割り当ては強さの順で決め、重なりの判定は radiusAt で求めた距離に置いた位置で行う。
  */
 export function calculateAngles(
-  radii: Map<UserId, number>,
+  strengths: Map<UserId, number>,
+  radiusAt: RadiusAt,
   mode: AngularMode = GRAVITY_CONFIG.angular.mode,
 ): Map<UserId, number> {
   const { startAngle, jitterFactor } = GRAVITY_CONFIG.angular;
-  const sorted = sortByStrength(radii);
+  const sorted = sortByStrength(strengths);
   const n = sorted.length;
   const angles = new Map<UserId, number>();
   if (n === 0) return angles;
 
   if (mode === 'golden') {
-    sorted.forEach(({ userId }, rank) => angles.set(userId, startAngle + rank * GOLDEN_ANGLE));
+    sorted.forEach((userId, rank) => angles.set(userId, startAngle + rank * GOLDEN_ANGLE));
     return angles;
   }
 
   const railGap = TWO_PI / n;
   const jitterScale = mode === 'rails-jitter' && n > 1 ? jitterFactor * railGap : 0;
-  const members: Member[] = sorted.map(({ userId, radius }) => ({
+  const members: Member[] = sorted.map((userId) => ({
     userId,
-    radius,
     jitter: hashToUnit(userId) * jitterScale,
   }));
 
-  const occupant = assignRails(members);
+  const occupant = assignRails(members, radiusAt);
   occupant.forEach((rank, slot) => {
     const member = members[rank];
     angles.set(member.userId, startAngle + slot * railGap + member.jitter);
