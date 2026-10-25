@@ -61,9 +61,22 @@ export type GravityLayoutOverrides = {
 };
 
 /** 惑星1つぶんの箱。画面全体を拡大しても、惑星の見た目の大きさは上限・下限の範囲にとどめる */
-function ZoomCompensated({ zoom, children }: { zoom: SharedValue<number>; children: ReactNode }) {
-  const style = usePlanetCounterScaleStyle(zoom);
-  return <Animated.View style={style}>{children}</Animated.View>;
+// 押せる範囲(Pressable)ごと縮め戻すので、見た目の大きさと押せる範囲が一致する(拡大しても隣の惑星と取り合わない)
+function ZoomCompensated({
+  zoom,
+  left,
+  top,
+  children,
+}: {
+  zoom: SharedValue<number>;
+  left: number;
+  top: number;
+  children: ReactNode;
+}) {
+  const counterScale = usePlanetCounterScaleStyle(zoom);
+  return (
+    <Animated.View style={[styles.planet, { left, top }, counterScale]}>{children}</Animated.View>
+  );
 }
 
 type Props = GravityViewProps & {
@@ -187,27 +200,20 @@ export function GravityView({
         <Animated.View style={[StyleSheet.absoluteFill, viewport.contentStyle]}>
           {placed.map(({ candidate: c, size, left, top }) => {
             return (
-              <Pressable
-                key={c.userId}
-                onPress={() => onPressPlanet(c.userId)}
-                style={[styles.planet, { left, top }]}
-              >
-                <ZoomCompensated zoom={viewport.zoom}>
+              <ZoomCompensated key={c.userId} zoom={viewport.zoom} left={left} top={top}>
+                <Pressable onPress={() => onPressPlanet(c.userId)}>
                   <PlanetNode
                     planet={c.planet}
                     size={size}
                     label={c.nickname}
                     showLabel={c.encounterCount >= GRAVITY_CONFIG.labelMinEncounters}
                   />
-                </ZoomCompensated>
-              </Pressable>
+                </Pressable>
+              </ZoomCompensated>
             );
           })}
-          <Pressable
-            onPress={() => onPressPlanet(me.userId)}
-            style={[styles.planet, { left: mePos.left, top: mePos.top }]}
-          >
-            <ZoomCompensated zoom={viewport.zoom}>
+          <ZoomCompensated zoom={viewport.zoom} left={mePos.left} top={mePos.top}>
+            <Pressable onPress={() => onPressPlanet(me.userId)}>
               <PlanetNode
                 planet={me.planet}
                 size={mePos.size}
@@ -215,8 +221,8 @@ export function GravityView({
                 isMe
                 satellites={me.featuredSatellites}
               />
-            </ZoomCompensated>
-          </Pressable>
+            </Pressable>
+          </ZoomCompensated>
         </Animated.View>
       </View>
     </GestureDetector>
