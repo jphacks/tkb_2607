@@ -43,11 +43,11 @@ export const SpaceDecorLayer = memo(function SpaceDecorLayer() {
               width={o.width}
               height={o.height}
               style="stroke"
-              strokeWidth={ORBIT_STYLE.strokeWidth}
+              strokeWidth={ORBIT_STYLE.strokeWidth * o.scale}
               color={ORBIT_STYLE.color}
-              opacity={ORBIT_STYLE.opacity}
+              opacity={ORBIT_STYLE.opacity * o.opacity}
             >
-              <DashPathEffect intervals={ORBIT_STYLE.dash} />
+              <DashPathEffect intervals={ORBIT_STYLE.dash.map((d) => d * o.scale)} />
             </Oval>
           ))}
         </Group>

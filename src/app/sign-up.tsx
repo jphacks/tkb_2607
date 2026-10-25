@@ -7,6 +7,7 @@ export default function SignUpScreen() {
   return (
     <AuthForm
       submitLabel="登録する"
+      back
       onSubmit={signUp}
       footer={
         <AuthFooterLink

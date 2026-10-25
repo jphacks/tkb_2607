@@ -24,8 +24,9 @@ export default function AppLayout() {
   const needsPlanet = !needsProfile && profile.planet === null;
   const ready = !needsProfile && !needsPlanet;
 
+  // 前の画面へ戻るのは「← Back」ボタンだけにする(画面の端からのスワイプでは戻らない)
   return (
-    <Stack>
+    <Stack screenOptions={{ gestureEnabled: false }}>
       <Stack.Protected guard={needsProfile}>
         <Stack.Screen name="setup/profile" options={{ headerShown: false }} />
       </Stack.Protected>

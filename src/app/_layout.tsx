@@ -18,8 +18,9 @@ function RootNavigator() {
   // ログイン状態で見られる画面を切り替える。
   // 起動直後は「/」(ホーム)を開こうとし、未ログインなら最初に見られる画面(sign-in)へ送られる。
   // sign-in をグループ (auth) に入れると「/」の送り先がなくなり Unmatched route になるので、ここに直接置く。
+  // 前の画面へ戻るのは「← Back」ボタンだけにする(画面の端からのスワイプでは戻らない)
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, gestureEnabled: false }}>
       <Stack.Protected guard={!user}>
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="sign-up" />
