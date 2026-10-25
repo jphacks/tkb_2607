@@ -10,6 +10,7 @@
     },
     "preview": {
       "distribution": "internal",
+      "environment": "preview",
       "env": {
         "EXPO_PUBLIC_DATA_MODE": "supabase",
         "EXPO_PUBLIC_DEMO_MODE": "true"
