@@ -16,6 +16,7 @@ import { GRAVITY_CONFIG, type AngularMode } from './config';
 import { DESIGN_FRAME, fitDesign, ME_SLOT } from './home-layout';
 import { calculateMaxRadius, mapStrengthToRadius } from './radius';
 import { calculateStrengths } from './scoring';
+import { SpaceCameraLayer } from './space-camera-layer';
 import { useFrozenAngles } from './use-frozen-angles';
 import { usePlanetCounterScaleStyle, useViewport } from './use-viewport';
 import { fitZoomFor } from './viewport';
@@ -110,6 +111,14 @@ export function GravityView({
           viewport.setViewportSize(w, h);
         }}
       >
+        {/* 軌道の点線と星の飾り。惑星と同じカメラで動く(背景のグラデーションは画面側で、動かない) */}
+        <SpaceCameraLayer
+          zoom={viewport.zoom}
+          translateX={viewport.translateX}
+          translateY={viewport.translateY}
+          width={width}
+          height={height}
+        />
         <Animated.View style={[StyleSheet.absoluteFill, viewport.contentStyle]}>
           {placed.map(({ candidate: c, size, left, top }) => {
             return (

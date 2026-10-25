@@ -103,7 +103,7 @@ export function useViewport() {
     fitZoom.value = value;
   };
 
-  return { gesture, contentStyle, zoom, setViewportSize, setFitZoom };
+  return { gesture, contentStyle, zoom, translateX, translateY, setViewportSize, setFitZoom };
 }
 
 /** 惑星1つにかける逆向きの拡大(見た目の大きさを上限・下限に収める)。惑星ごとに呼ぶ */
