@@ -1,6 +1,7 @@
 import { File } from 'expo-file-system';
 
 import type { Tables, TablesUpdate } from '@/lib/database.types';
+import { clampPlanetScale } from '@/features/gravity';
 import { getSupabase } from '@/lib/supabase';
 import type {
   AgeGroup,
@@ -24,11 +25,17 @@ function publicUrl(bucket: Bucket, path: string): string {
   return getSupabase().storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
 
-function toPlanet(row: { image_path: string | null; palette: unknown } | null): Planet | null {
+/** planets から読む列。toPlanet に渡す */
+const PLANET_COLUMNS = 'image_path, palette, size_scale' as const;
+
+function toPlanet(
+  row: { image_path: string | null; palette: unknown; size_scale: number } | null,
+): Planet | null {
   if (!row) return null;
   return {
     imageUrl: row.image_path ? publicUrl('planets', row.image_path) : null,
     palette: Array.isArray(row.palette) ? (row.palette as string[]) : [],
+    sizeScale: clampPlanetScale(row.size_scale),
   };
 }
 
@@ -163,7 +170,7 @@ export const supabaseSource: DataSource = {
         .single(),
       supabase.from('private_profiles').select('real_name').eq('user_id', userId).maybeSingle(),
       supabase.from('user_tags').select('tags(id, name)').eq('user_id', userId),
-      supabase.from('planets').select('image_path, palette').eq('user_id', userId).maybeSingle(),
+      supabase.from('planets').select(PLANET_COLUMNS).eq('user_id', userId).maybeSingle(),
     ]);
     const profileRow = check(profile);
     return {
@@ -225,6 +232,16 @@ export const supabaseSource: DataSource = {
     );
   },
 
+  async updateMyPlanetScale(sizeScale) {
+    const userId = await requireUserId();
+    check(
+      await getSupabase()
+        .from('planets')
+        .update({ size_scale: clampPlanetScale(sizeScale) })
+        .eq('user_id', userId),
+    );
+  },
+
   async listMySatellites() {
     const userId = await requireUserId();
     const rows = check(
@@ -282,7 +299,7 @@ export const supabaseSource: DataSource = {
     const userId = await requireUserId();
     const [profile, planet, featured, candidates] = await Promise.all([
       supabase.from('profiles').select('nickname, organization').eq('id', userId).single(),
-      supabase.from('planets').select('image_path, palette').eq('user_id', userId).maybeSingle(),
+      supabase.from('planets').select(PLANET_COLUMNS).eq('user_id', userId).maybeSingle(),
       getFeatured(userId),
       supabase.rpc('get_home_candidates', { p_limit: limit }),
     ]);
@@ -305,8 +322,14 @@ export const supabaseSource: DataSource = {
       candidates: rows.map((r): HomeCandidate => ({
         userId: r.user_id,
         nickname: r.nickname,
+        // すれ違いが5回未満の相手・本名を登録していない人は null で返ってくる
+        realName: r.real_name ?? null,
         organization: r.organization,
-        planet: toPlanet({ image_path: r.planet_image_path, palette: r.palette })!,
+        planet: toPlanet({
+          image_path: r.planet_image_path,
+          palette: r.palette,
+          size_scale: r.planet_size_scale,
+        })!,
         // jsonb で返ってくるので、形を指定して読む
         featuredSatellites: (
           (r.featured_satellites ?? []) as { id: string; image_path: string }[]
@@ -343,7 +366,7 @@ export const supabaseSource: DataSource = {
         .select(`nickname, ${PROFILE_DETAIL_COLUMNS}`)
         .eq('id', userId)
         .single(),
-      supabase.from('planets').select('image_path, palette').eq('user_id', userId).maybeSingle(),
+      supabase.from('planets').select(PLANET_COLUMNS).eq('user_id', userId).maybeSingle(),
       supabase
         .from('satellites')
         .select('id, image_path')
@@ -387,7 +410,7 @@ export const supabaseSource: DataSource = {
     if (ids.length === 0) return [];
     const [profiles, planets, satellites, tags] = await Promise.all([
       supabase.from('profiles').select(`id, nickname, ${PROFILE_DETAIL_COLUMNS}`).in('id', ids),
-      supabase.from('planets').select('user_id, image_path, palette').in('user_id', ids),
+      supabase.from('planets').select(`user_id, ${PLANET_COLUMNS}`).in('user_id', ids),
       supabase
         .from('satellites')
         .select('id, user_id, image_path')

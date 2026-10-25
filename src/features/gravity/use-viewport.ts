@@ -1,24 +1,21 @@
 // ズーム・パンのジェスチャーと、画面全体・惑星にかける変形(アニメーションするスタイル)をまとめるフック。
 // 2本指でつまむと拡大・縮小(指の真ん中を中心に)、1本指でなぞると移動する。
 // 惑星の論理的な配置は変えず、ここで作る transform だけで見た目を変える。
+// 惑星を並べた層(画面と同じ大きさ)をまるごと拡大すると、iOS がその大きな層を粗い解像度で描くため、
+// 惑星・名前・輪がぼやける。そこで層は拡大せず、惑星ごとに位置と大きさだけを変える(usePlanetCameraStyle)。
 import { useCallback } from 'react';
 import {
   usePanGesture,
   usePinchGesture,
   useSimultaneousGestures,
 } from 'react-native-gesture-handler';
-import {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-  type SharedValue,
-} from 'react-native-reanimated';
+import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import {
   anchorUnderFocal,
   clampTranslate,
   clampZoom,
-  planetCounterScale,
+  planetZoomScale,
   translateKeepingFocal,
 } from './viewport';
 
@@ -91,15 +88,6 @@ export function useViewport() {
 
   const gesture = useSimultaneousGestures(pinch, pan);
 
-  /** 惑星を並べた層全体にかける変形(中心を基準に拡大してから移動) */
-  const contentStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { scale: zoom.value },
-    ],
-  }));
-
   // shared value は React の決まり(描画中に値を書き換えない)に合わせて .set() / .get() で読み書きする。
   // 画面側の useEffect の依存に入るので、描き直しのたびに作り直さない(useCallback)。
   // 作り直すと「関数が変わった」と判断され、値が同じでも毎回呼び直される
@@ -123,12 +111,42 @@ export function useViewport() {
     [fitZoom, zoom],
   );
 
-  return { gesture, contentStyle, zoom, translateX, translateY, setViewportSize, setFitZoom };
+  return {
+    gesture,
+    zoom,
+    translateX,
+    translateY,
+    viewportWidth,
+    viewportHeight,
+    setViewportSize,
+    setFitZoom,
+  };
 }
 
-/** 惑星1つにかける逆向きの拡大(見た目の大きさを上限・下限に収める)。惑星ごとに呼ぶ */
-export function usePlanetCounterScaleStyle(zoom: SharedValue<number>) {
-  return useAnimatedStyle(() => ({
-    transform: [{ scale: planetCounterScale(zoom.value) }],
-  }));
+export type Viewport = ReturnType<typeof useViewport>;
+
+/**
+ * 惑星1つにかける変形。等倍のときの中心 (centerX, centerY) の惑星を、画面全体を
+ * 「画面の中心を基準に zoom 倍 → translate だけ移動」したときと同じ位置に動かし、
+ * 大きさは planetZoomScale の範囲で変える。惑星ごとに呼ぶ
+ */
+export function usePlanetCameraStyle(
+  viewport: Pick<
+    Viewport,
+    'zoom' | 'translateX' | 'translateY' | 'viewportWidth' | 'viewportHeight'
+  >,
+  centerX: number,
+  centerY: number,
+) {
+  const { zoom, translateX, translateY, viewportWidth, viewportHeight } = viewport;
+  return useAnimatedStyle(() => {
+    const z = zoom.value;
+    return {
+      transform: [
+        { translateX: translateX.value + (z - 1) * (centerX - viewportWidth.value / 2) },
+        { translateY: translateY.value + (z - 1) * (centerY - viewportHeight.value / 2) },
+        { scale: planetZoomScale(z) },
+      ],
+    };
+  });
 }

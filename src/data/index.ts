@@ -21,7 +21,7 @@ import { source } from './source-instance';
 
 export { AuthProvider, useAuth } from './auth';
 export { queryClient } from './query-client';
-export { MAX_FEATURED_SATELLITES, type Credentials } from './source';
+export { MAX_FEATURED_SATELLITES, REAL_NAME_MIN_ENCOUNTERS, type Credentials } from './source';
 export { getSampleHome } from './samples';
 
 export const queryKeys = {
@@ -82,6 +82,13 @@ export function useSavePlanet() {
   return useMutation({
     mutationFn: (input: SavePlanetInput) => source.savePlanet(input),
     onSuccess: () => invalidate('myProfile', 'home', 'planetDetail'),
+  });
+}
+
+export function useUpdateMyPlanetScale() {
+  return useMutation({
+    mutationFn: (sizeScale: number) => source.updateMyPlanetScale(sizeScale),
+    onSuccess: () => invalidate('myProfile', 'home', 'planetDetail', 'pins'),
   });
 }
 

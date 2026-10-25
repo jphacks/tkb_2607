@@ -21,8 +21,8 @@ export const GRAVITY_CONFIG = {
     saturationCount: 15,
   },
 
-  /** 名前ラベルを出すのは、すれ違いがこの回数以上の人だけ */
-  labelMinEncounters: 5,
+  /** 名前ラベルを出すのは、すれ違いがこの回数以上の人だけ(0 で全員に出す) */
+  labelMinEncounters: 0,
 
   /**
    * ホームに出す惑星の最大人数。これより多いと一番外側の円で重なるため、

@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useRef } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NearbyCountPill } from '@/components/nearby-count-pill';
@@ -58,7 +58,7 @@ export default function HomeScreen() {
           saveAngles.mutate({ periodStart, angles });
         }}
       />
-      {/* お知らせの画面はまだないので、ベルは見た目だけ。画面ができたら Pressable にする */}
+      {/* お知らせの画面はまだないので、ベルは押すと「準備中」と出す(惑星の詳細の「きらめきを送る」と同じ) */}
       <View style={[styles.actions, { top: insets.top + space.sm }]} pointerEvents="box-none">
         <Pressable
           onPress={() => router.push('/pins')}
@@ -68,9 +68,14 @@ export default function HomeScreen() {
         >
           <Image source={pinIcon} style={styles.pinIcon} contentFit="contain" />
         </Pressable>
-        <View style={styles.roundButton} pointerEvents="none">
+        <Pressable
+          onPress={() => Alert.alert('準備中です', 'お知らせの機能は、いま作っています。')}
+          style={styles.roundButton}
+          accessibilityRole="button"
+          accessibilityLabel="お知らせ"
+        >
           <Image source={bellIcon} style={styles.bellIcon} contentFit="contain" />
-        </View>
+        </Pressable>
       </View>
       <View style={styles.nearby} pointerEvents="none">
         <NearbyCountPill count={data.candidates.length} />

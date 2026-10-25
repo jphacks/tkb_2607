@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
-import Animated, { type SharedValue } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PlanetNode } from '@/components/planet-node';
@@ -28,10 +28,12 @@ import { blendStrengthsWithRank, calculateMaxRadiusAt, mapStrengthToRadius } fro
 import { calculateStrengths } from './scoring';
 import { SpaceCameraLayer } from './space-camera-layer';
 import { useFrozenAngles } from './use-frozen-angles';
-import { usePlanetCounterScaleStyle, useViewport } from './use-viewport';
+import { usePlanetCameraStyle, useViewport, type Viewport } from './use-viewport';
 import { fitZoomFor } from './viewport';
 
 const PLANET_SIZE = GRAVITY_CONFIG.layout.planetSize;
+/** 惑星は、ズームで一番大きく見えるときの倍率の細かさで描く(拡大してもぼやけないように) */
+const PLANET_RESOLUTION = GRAVITY_CONFIG.viewport.planetZoomMax;
 
 /** config.ts の avoidAreas(画面の pt)を、width × height の画面のデザイン上の座標に直す */
 function avoidDesignRects(width: number, height: number, safeTop: number): DesignRect[] {
@@ -60,23 +62,25 @@ export type GravityLayoutOverrides = {
   visibleMarginFactor?: number;
 };
 
-/** 惑星1つぶんの箱。画面全体を拡大しても、惑星の見た目の大きさは上限・下限の範囲にとどめる */
-// 押せる範囲(Pressable)ごと縮め戻すので、見た目の大きさと押せる範囲が一致する(拡大しても隣の惑星と取り合わない)
+/**
+ * 惑星1つぶんの箱。ズーム・パンに合わせて、この惑星だけを動かす(惑星の見た目の大きさは上限・下限の範囲にとどめる)。
+ * 押せる範囲(Pressable)ごと動かすので、見た目の大きさと押せる範囲が一致する(拡大しても隣の惑星と取り合わない)
+ */
 function ZoomCompensated({
-  zoom,
+  viewport,
   left,
   top,
+  size,
   children,
 }: {
-  zoom: SharedValue<number>;
+  viewport: Viewport;
   left: number;
   top: number;
+  size: number;
   children: ReactNode;
 }) {
-  const counterScale = usePlanetCounterScaleStyle(zoom);
-  return (
-    <Animated.View style={[styles.planet, { left, top }, counterScale]}>{children}</Animated.View>
-  );
+  const camera = usePlanetCameraStyle(viewport, left + size / 2, top + size / 2);
+  return <Animated.View style={[styles.planet, { left, top }, camera]}>{children}</Animated.View>;
 }
 
 type Props = GravityViewProps & {
@@ -167,11 +171,15 @@ export function GravityView({
   });
 
   // 端で見切れている惑星があれば、全員が丸ごと見えるところまで縮小できるようにする
+  // (惑星本体は持ち主が決めた倍率 planet.sizeScale で描かれるので、その大きさで判定する)
   const fitZoom = fitZoomFor(
-    [mePos, ...placed].map(({ left, top, size }) => ({
+    [
+      { ...mePos, planet: me.planet },
+      ...placed.map((p) => ({ ...p, planet: p.candidate.planet })),
+    ].map(({ left, top, size, planet }) => ({
       centerX: left + size / 2,
       centerY: top + size / 2,
-      size,
+      size: size * (planet?.sizeScale ?? 1),
     })),
     width,
     height,
@@ -197,22 +205,26 @@ export function GravityView({
           width={width}
           height={height}
         />
-        <Animated.View style={[StyleSheet.absoluteFill, viewport.contentStyle]}>
+        {/* 惑星の層はまるごと拡大しない(拡大すると iOS が粗く描いてぼやける)。惑星ごとに ZoomCompensated で動かす */}
+        <View style={StyleSheet.absoluteFill}>
           {placed.map(({ candidate: c, size, left, top }) => {
             return (
-              <ZoomCompensated key={c.userId} zoom={viewport.zoom} left={left} top={top}>
+              <ZoomCompensated key={c.userId} viewport={viewport} left={left} top={top} size={size}>
                 <Pressable onPress={() => onPressPlanet(c.userId)}>
                   <PlanetNode
                     planet={c.planet}
                     size={size}
-                    label={c.nickname}
+                    // 本名を見せてよい相手(すれ違い5回以上)なら本名、それ以外はニックネーム
+                    label={c.realName ?? c.nickname}
                     showLabel={c.encounterCount >= GRAVITY_CONFIG.labelMinEncounters}
+                    satellites={c.featuredSatellites}
+                    resolution={PLANET_RESOLUTION}
                   />
                 </Pressable>
               </ZoomCompensated>
             );
           })}
-          <ZoomCompensated zoom={viewport.zoom} left={mePos.left} top={mePos.top}>
+          <ZoomCompensated viewport={viewport} left={mePos.left} top={mePos.top} size={mePos.size}>
             <Pressable onPress={() => onPressPlanet(me.userId)}>
               <PlanetNode
                 planet={me.planet}
@@ -220,10 +232,11 @@ export function GravityView({
                 label="You"
                 isMe
                 satellites={me.featuredSatellites}
+                resolution={PLANET_RESOLUTION}
               />
             </Pressable>
           </ZoomCompensated>
-        </Animated.View>
+        </View>
       </View>
     </GestureDetector>
   );

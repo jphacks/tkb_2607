@@ -11,7 +11,9 @@ import type {
   UserId,
 } from '@/types/domain';
 
-import { MAX_FEATURED_SATELLITES, type DataSource } from '../source';
+import { clampPlanetScale } from '@/features/gravity';
+
+import { MAX_FEATURED_SATELLITES, REAL_NAME_MIN_ENCOUNTERS, type DataSource } from '../source';
 import { DUMMY_FIXTURES, ME_FIXTURE, MOCK_ME_ID } from './fixtures';
 
 // サーバー側(supabase/migrations)と同じ値にそろえる
@@ -53,7 +55,7 @@ function createInitialState() {
     realName: ME_FIXTURE.realName,
     organization: ME_FIXTURE.organization,
     tagNames: [...ME_FIXTURE.tags],
-    planet: { imageUrl: null, palette: ME_FIXTURE.palette },
+    planet: { imageUrl: null, palette: ME_FIXTURE.palette, sizeScale: 1 },
     satellites: [],
     isDummy: false,
     ageGroup: ME_FIXTURE.ageGroup,
@@ -70,10 +72,10 @@ function createInitialState() {
       email: `${f.id}@example.com`,
       password: 'password',
       nickname: f.nickname,
-      realName: null,
+      realName: f.realName,
       organization: f.organization,
       tagNames: [...f.tags],
-      planet: { imageUrl: null, palette: f.palette },
+      planet: { imageUrl: null, palette: f.palette, sizeScale: 1 },
       satellites: [],
       isDummy: true,
       ageGroup: f.ageGroup ?? null,
@@ -267,7 +269,15 @@ export const mockSource: DataSource = {
 
   async savePlanet({ planetImageUri, palette }) {
     await wait();
-    currentUser().planet = { imageUrl: planetImageUri, palette };
+    const user = currentUser();
+    // 作り直しても大きさはそのまま(Supabase の upsert と同じ)
+    user.planet = { imageUrl: planetImageUri, palette, sizeScale: user.planet?.sizeScale ?? 1 };
+  },
+
+  async updateMyPlanetScale(sizeScale) {
+    await wait();
+    const user = currentUser();
+    if (user.planet) user.planet = { ...user.planet, sizeScale: clampPlanetScale(sizeScale) };
   },
 
   async listMySatellites() {
@@ -321,6 +331,7 @@ export const mockSource: DataSource = {
       candidates.push({
         userId: user.id,
         nickname: user.nickname,
+        realName: timestamps.length >= REAL_NAME_MIN_ENCOUNTERS ? user.realName : null,
         organization: user.organization,
         planet: user.planet,
         featuredSatellites: featured(user),

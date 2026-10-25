@@ -14,6 +14,8 @@ export type Planet = {
   imageUrl: string | null;
   /** 惑星の色(例: "#E8A0B4")。先頭ほど代表的な色 */
   palette: string[];
+  /** 惑星の大きさの倍率(1 が標準)。範囲は @/features/gravity の PLANET_SCALE_RANGE。衛星の大きさは変えない */
+  sizeScale: number;
 };
 
 export type SatelliteSummary = {
@@ -46,7 +48,7 @@ export type MyProfile = {
   userId: UserId;
   /** 未設定なら空文字(初回のプロフィール設定がまだ) */
   nickname: string;
-  /** 本人にしか見えない本名 */
+  /** 本名。すれ違いが5回以上の相手のホームにだけ出る(それ以外の人には見えない) */
   realName: string | null;
   /** 所属団体(大学名・会社名など、正式名称)。タグとは別。未入力なら null */
   organization: string | null;
@@ -90,6 +92,8 @@ export type HomeUser = {
 export type HomeCandidate = {
   userId: UserId;
   nickname: string;
+  /** 本名。すれ違いが REAL_NAME_MIN_ENCOUNTERS(5)回以上で、本名を登録している人だけ入る。それ以外は null */
+  realName: string | null;
   /** 所属団体(正式名称)。自分の organization と比較して組織マッチングに使う */
   organization: string | null;
   planet: Planet;

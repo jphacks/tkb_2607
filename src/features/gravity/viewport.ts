@@ -46,12 +46,12 @@ export function fitZoomFor(planets: PlanetBox[], width: number, height: number):
 }
 
 /**
- * 惑星にかける「逆向きの拡大率」。画面全体を zoom 倍にしても、惑星の見た目は
+ * 画面全体を zoom 倍にしたときの、惑星の見た目の拡大率。
  * planetZoomMin〜planetZoomMax 倍の範囲にとどめる(それを超えると、惑星の間だけが広がる)。
  */
-export function planetCounterScale(zoom: number): number {
+export function planetZoomScale(zoom: number): number {
   'worklet';
-  return clamp(zoom, planetZoomMin, planetZoomMax) / zoom;
+  return clamp(zoom, planetZoomMin, planetZoomMax);
 }
 
 /**
