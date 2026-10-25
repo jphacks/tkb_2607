@@ -167,11 +167,15 @@ export function GravityView({
   });
 
   // 端で見切れている惑星があれば、全員が丸ごと見えるところまで縮小できるようにする
+  // (惑星本体は持ち主が決めた倍率 planet.sizeScale で描かれるので、その大きさで判定する)
   const fitZoom = fitZoomFor(
-    [mePos, ...placed].map(({ left, top, size }) => ({
+    [
+      { ...mePos, planet: me.planet },
+      ...placed.map((p) => ({ ...p, planet: p.candidate.planet })),
+    ].map(({ left, top, size, planet }) => ({
       centerX: left + size / 2,
       centerY: top + size / 2,
-      size,
+      size: size * (planet?.sizeScale ?? 1),
     })),
     width,
     height,
