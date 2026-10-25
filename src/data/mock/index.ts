@@ -72,7 +72,7 @@ function createInitialState() {
       email: `${f.id}@example.com`,
       password: 'password',
       nickname: f.nickname,
-      realName: null,
+      realName: f.realName,
       organization: f.organization,
       tagNames: [...f.tags],
       planet: { imageUrl: null, palette: f.palette, sizeScale: 1 },
