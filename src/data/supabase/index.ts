@@ -386,7 +386,8 @@ export const supabaseSource: DataSource = {
     return {
       userId,
       nickname: profileRow?.nickname ?? '',
-      realName: check(realName) ?? null,
+      // 本名が取れなくても(関数の失敗など)、ニックネームで画面を出す
+      realName: realName.error ? null : (realName.data ?? null),
       planet: toPlanet(check(planet)),
       satellites: (check(satellites) ?? []).map((r) => ({
         id: r.id,
