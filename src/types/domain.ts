@@ -133,6 +133,8 @@ export type HomeData = {
 export type PlanetDetail = {
   userId: UserId;
   nickname: string;
+  /** 本名。すれ違いが REAL_NAME_MIN_ENCOUNTERS(5)回以上で、本名を登録している人だけ入る。それ以外は null */
+  realName: string | null;
   planet: Planet | null;
   satellites: SatelliteSummary[];
   tags: Tag[];

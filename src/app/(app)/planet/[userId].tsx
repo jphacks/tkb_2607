@@ -79,7 +79,8 @@ export default function PlanetDetailScreen() {
           <View style={styles.identity}>
             <View style={styles.nameRow}>
               <Text style={styles.owner} numberOfLines={1}>
-                {data.nickname}の
+                {/* 本名を見せてよい相手(すれ違い5回以上)なら本名、それ以外はニックネーム */}
+                {data.realName ?? data.nickname}の
               </Text>
               <Text style={styles.planetName}>惑星</Text>
             </View>

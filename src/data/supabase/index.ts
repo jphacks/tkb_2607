@@ -360,7 +360,7 @@ export const supabaseSource: DataSource = {
   async getPlanetDetail(userId) {
     const supabase = getSupabase();
     const myId = await sessionUserId();
-    const [profile, planet, satellites, tags, pin] = await Promise.all([
+    const [profile, planet, satellites, tags, pin, realName] = await Promise.all([
       supabase
         .from('profiles')
         .select(`nickname, ${PROFILE_DETAIL_COLUMNS}`)
@@ -379,11 +379,14 @@ export const supabaseSource: DataSource = {
         .eq('user_id', myId)
         .eq('target_user_id', userId)
         .maybeSingle(),
+      // すれ違いが5回未満の相手・本名を登録していない人は null で返ってくる
+      supabase.rpc('get_visible_real_name', { p_user_id: userId }),
     ]);
     const profileRow = check(profile);
     return {
       userId,
       nickname: profileRow?.nickname ?? '',
+      realName: check(realName) ?? null,
       planet: toPlanet(check(planet)),
       satellites: (check(satellites) ?? []).map((r) => ({
         id: r.id,
