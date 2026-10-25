@@ -358,6 +358,7 @@ export type Database = {
           user_id: string;
         }[];
       };
+      get_visible_real_name: { Args: { p_user_id: string }; Returns: string };
       home_period_start: { Args: never; Returns: string };
       issue_ble_token: {
         Args: never;

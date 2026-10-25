@@ -386,9 +386,11 @@ export const mockSource: DataSource = {
     await wait();
     const user = state.users.get(userId);
     if (!user) throw new Error('ユーザーが見つかりません');
+    const encounters = state.currentUserId ? encountersBetween(state.currentUserId, user.id) : [];
     return {
       userId: user.id,
       nickname: user.nickname,
+      realName: encounters.length >= REAL_NAME_MIN_ENCOUNTERS ? user.realName : null,
       planet: user.planet,
       satellites: user.satellites.map(({ id, imageUrl }) => ({ id, imageUrl })),
       tags: toTags(user.tagNames),
