@@ -47,13 +47,15 @@ export function BackButton() {
   );
 }
 
-type NavState = { index?: number; routes?: { state?: NavState }[] };
+type NavState = { type?: string; index?: number; routes?: { state?: NavState }[] };
 
 /** 今開いている画面までのどこかの Stack に、1つ前の画面があるか */
 function hasHistory(state: NavState | undefined): boolean {
   if (!state?.routes?.length) return false;
   const index = state.index ?? state.routes.length - 1;
-  return index > 0 || hasHistory(state.routes[index]?.state);
+  // タブなどの index は「何番目のタブを開いているか」で、戻る先ではないので Stack だけ数える
+  const isStack = state.type === undefined || state.type === 'stack';
+  return (isStack && index > 0) || hasHistory(state.routes[index]?.state);
 }
 
 /** ぼんやり光る白い星(飾り)。x・y は画面の左上からの位置 */

@@ -5,14 +5,13 @@
 // 奥の半分は惑星の後ろを通る。手前と奥の境目は楕円の長軸の両端(惑星の外側)になる。
 import { Canvas, DashPathEffect, Path, Skia, type SkPath } from '@shopify/react-native-skia';
 import { Image } from 'expo-image';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
-  withDecay,
   withSpring,
   type SharedValue,
 } from 'react-native-reanimated';
@@ -43,6 +42,8 @@ const GEOMETRY: Record<
 
 /** 1つ目の衛星が止まる角度。手前の右下(Figma の配置) */
 const FRONT_ANGLE = Math.PI / 3;
+/** 指を離したあと、衛星が止まる位置へ向かう動き */
+const SETTLE_SPRING = { mass: 1, stiffness: 70, damping: 15 };
 /** 点線の点の間隔(px) */
 const DOT_GAP = 5.1;
 
@@ -76,8 +77,10 @@ function orbitDelta(o: Orbit, dx: number, dy: number, theta: number) {
   const ty = o.b * c;
   const along = (ux * tx + uy * ty) / (tx * tx + ty * ty);
   // 左右の端では軌道が縦向きなので、横の動きが接線に乗らない。残った横の動きで、
-  // 端の衛星を惑星の中心の側へ(手前の衛星なら手前を、奥の衛星なら奥を通って)回す
-  const restX = ux - along * tx;
+  // 端の衛星を惑星の中心の側へ(手前の衛星なら手前を、奥の衛星なら奥を通って)回す。
+  // 端より外へ引く動きでは回さない(手前と奥を行き来して、惑星の前後にちらつくのを防ぐ)
+  const outward = (ux - along * tx) * c > 0;
+  const restX = outward ? 0 : ux - along * tx;
   const across = (-restX * (s >= 0 ? 1 : -1) * c * c) / (o.a * Math.max(Math.abs(s), 0.45));
   return along + across;
 }
@@ -158,13 +161,14 @@ export function PlanetOrbit({
   const settle = (velocity: number) => {
     'worklet';
     const v = Math.max(-15, Math.min(15, velocity));
-    if (count < 2) {
-      rotation.set(withDecay({ velocity: v, deceleration: 0.997 }));
-      return;
-    }
     const target = Math.round((rotation.get() + v * 0.3) / step) * step;
-    rotation.set(withSpring(target, { velocity: v, mass: 1, stiffness: 70, damping: 15 }));
+    rotation.set(withSpring(target, { ...SETTLE_SPRING, velocity: v }));
   };
+
+  // 衛星の数が変わると並ぶ間隔も変わるので、どれかの衛星が手前の右下に来る位置へ寄せ直す
+  useEffect(() => {
+    rotation.set(withSpring(Math.round(rotation.get() / step) * step, SETTLE_SPRING));
+  }, [rotation, step]);
 
   const pan = usePanGesture({
     enabled: swipeable,
