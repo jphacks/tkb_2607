@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { TagChip } from '@/components/pill';
-import { PlanetBody } from '@/components/planet-node';
+import { PlanetSurface } from '@/components/planet-node';
 import { MoreButton, Sparkle, SpaceScreen } from '@/components/space';
 import { ErrorText, Loading } from '@/components/ui';
 import { usePins, useSetPinned } from '@/data';
@@ -125,7 +125,8 @@ function PinCard({ pin }: { pin: PinnedPlanet }) {
     >
       <View style={styles.planetArea}>
         <View style={styles.ring} />
-        <PlanetBody planet={pin.planet} size={80} />
+        {/* カードの輪・衛星の配置が 80px 前提なので、惑星サイズの倍率は使わず標準の大きさで出す */}
+        <PlanetSurface planet={pin.planet} size={80} />
         {left && (
           <Image source={{ uri: left.imageUrl }} style={styles.satLeft} contentFit="contain" />
         )}

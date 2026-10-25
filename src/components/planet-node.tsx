@@ -74,7 +74,8 @@ export function PlanetBody({ planet, size }: { planet: Planet | null; size: numb
   );
 }
 
-function PlanetSurface({ planet, size }: { planet: Planet | null; size: number }) {
+/** 惑星本体を、倍率(planet.sizeScale)を掛けずに直径 size で描く。倍率を自分で扱う呼び出し側・標準の大きさで出したい所で使う */
+export function PlanetSurface({ planet, size }: { planet: Planet | null; size: number }) {
   const circle = { width: size, height: size, borderRadius: size / 2 };
   if (planet?.imageUrl) {
     // 写真担当の惑星の画像は背景が透明で、輪や衛星が本体の外にはみ出す。丸く切らずに、

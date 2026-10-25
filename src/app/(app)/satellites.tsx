@@ -157,7 +157,7 @@ function SizeSlider({
   const [width, setWidth] = useState(0);
   const ratio = (value - min) / (max - min);
 
-  /** バーの左端からの位置(px)を倍率に直す。触れたところへ動かす */
+  /** バーの左端からの位置(px)を倍率に直す */
   const setFromX = (x: number) => {
     if (width <= 0) return;
     const r = Math.min(1, Math.max(0, x / width));
@@ -172,10 +172,8 @@ function SizeSlider({
     // 先に縦に動いたら画面のスクロールとみなす
     failOffsetY: [-10, 10],
     hitSlop: { top: 14, bottom: 14 },
-    onTouchesDown: (e) => {
-      const touch = e.allTouches[0];
-      if (touch) setFromX(touch.x);
-    },
+    // 横に動かし始めてから値を変える(縦スクロールのつもりで触れただけでは変えない)
+    onActivate: (e) => setFromX(e.x),
     onUpdate: (e) => setFromX(e.x),
   });
 

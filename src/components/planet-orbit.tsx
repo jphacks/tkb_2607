@@ -18,7 +18,7 @@ import Animated, {
 
 import type { Planet, SatelliteSummary } from '@/types/domain';
 
-import { PlanetBody } from './planet-node';
+import { PlanetSurface } from './planet-node';
 
 type Size = 'lg' | 'md';
 
@@ -133,8 +133,8 @@ export function PlanetOrbit({
     [width, k, g],
   );
   const planetSize = g.planet * k;
-  /** 惑星本体の倍率(PlanetBody が planetSize に掛けて描く) */
-  const planetScale = planet?.sizeScale ?? 1;
+  /** 惑星本体の見た目の直径(持ち主が決めた倍率を掛ける)。押せる範囲もこの大きさにする */
+  const bodySize = planetSize * (planet?.sizeScale ?? 1);
   const satelliteSize = g.satellite * k;
 
   // 手前の半分は sin(t) > 0(0〜π)、奥の半分は π〜2π
@@ -185,8 +185,7 @@ export function PlanetOrbit({
       // 指の下にある衛星を探す。重なっていたら手前のものを選ぶ。惑星に隠れた奥の衛星は選ばない
       let pick = NaN;
       let pickDepth = -2;
-      const onPlanet =
-        Math.hypot(touch.x - orbit.cx, touch.y - orbit.cy) < (planetSize * planetScale) / 2;
+      const onPlanet = Math.hypot(touch.x - orbit.cx, touch.y - orbit.cy) < bodySize / 2;
       for (const base of baseAngles) {
         const t = base + rotation.get();
         const depth = Math.sin(t);
@@ -243,12 +242,9 @@ export function PlanetOrbit({
         <Pressable
           onPress={onPressPlanet}
           disabled={!onPressPlanet}
-          style={[
-            styles.planet,
-            { left: orbit.cx - planetSize / 2, top: orbit.cy - planetSize / 2 },
-          ]}
+          style={[styles.planet, { left: orbit.cx - bodySize / 2, top: orbit.cy - bodySize / 2 }]}
         >
-          <PlanetBody planet={planet} size={planetSize} />
+          <PlanetSurface planet={planet} size={bodySize} />
         </Pressable>
         <OrbitLine arc={front} />
         {satellites.map((s, i) => (
