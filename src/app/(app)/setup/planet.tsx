@@ -1,6 +1,5 @@
-import { Screen } from '@/components/ui';
+import { PlanetCreateScreen } from '@/components/planet-create-screen';
 import { useSavePlanet } from '@/data';
-import { PlanetCreator } from '@/features/photo';
 
 export { RouteErrorBoundary as ErrorBoundary } from '@/components/route-error-boundary';
 
@@ -8,8 +7,6 @@ export { RouteErrorBoundary as ErrorBoundary } from '@/components/route-error-bo
 export default function SetupPlanetScreen() {
   const savePlanet = useSavePlanet();
   return (
-    <Screen>
-      <PlanetCreator onComplete={(result) => savePlanet.mutateAsync(result)} />
-    </Screen>
+    <PlanetCreateScreen back={false} onComplete={(result) => savePlanet.mutateAsync(result)} />
   );
 }

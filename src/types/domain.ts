@@ -33,6 +33,15 @@ export type Tag = {
   name: string;
 };
 
+/** 年代(生年月日の代わりに登録する) */
+export type AgeGroup = '10s' | '20s' | '30s' | '40s' | '50s_plus';
+
+/** 性別。'unspecified' は「登録しない」を選んだ人 */
+export type Gender = 'male' | 'female' | 'unspecified';
+
+/** 惑星の効果音の ID(アプリに入っている音から選ぶ。一覧は src/lib/planet-sounds.ts) */
+export type SoundId = string;
+
 export type MyProfile = {
   userId: UserId;
   /** 未設定なら空文字(初回のプロフィール設定がまだ) */
@@ -44,6 +53,14 @@ export type MyProfile = {
   tags: Tag[];
   /** まだ作っていなければ null */
   planet: Planet | null;
+  /** 未入力なら null */
+  ageGroup: AgeGroup | null;
+  /** 未入力なら null */
+  gender: Gender | null;
+  /** ひとこと(100文字まで)。未入力なら空文字 */
+  bio: string;
+  /** 惑星の効果音。選んでいなければ null */
+  soundId: SoundId | null;
 };
 
 export type UpdateProfileInput = {
@@ -53,6 +70,10 @@ export type UpdateProfileInput = {
   organization: string | null;
   /** タグ名の一覧。存在しないタグは新しく作られる */
   tagNames: string[];
+  /** 以下は省略すると今の値のまま */
+  ageGroup?: AgeGroup | null;
+  gender?: Gender | null;
+  bio?: string;
 };
 
 /** ホームの中心に出る自分 */
@@ -111,6 +132,25 @@ export type PlanetDetail = {
   planet: Planet | null;
   satellites: SatelliteSummary[];
   tags: Tag[];
+  ageGroup: AgeGroup | null;
+  gender: Gender | null;
+  bio: string;
+  soundId: SoundId | null;
+  /** 自分がこの惑星をピン止めしているか */
+  isPinned: boolean;
+};
+
+/** ピン止めした惑星(ピン止め一覧に出す) */
+export type PinnedPlanet = {
+  userId: UserId;
+  nickname: string;
+  planet: Planet | null;
+  /** 最大3つ */
+  featuredSatellites: SatelliteSummary[];
+  tags: Tag[];
+  bio: string;
+  soundId: SoundId | null;
+  pinnedAt: string;
 };
 
 export type SavePlanetInput = {

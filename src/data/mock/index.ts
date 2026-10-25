@@ -1,9 +1,12 @@
 import type {
+  AgeGroup,
   AuthUser,
+  Gender,
   EncounterReportResult,
   HomeCandidate,
   Planet,
   Satellite,
+  SoundId,
   Tag,
   UserId,
 } from '@/types/domain';
@@ -27,7 +30,13 @@ type MockUser = {
   planet: Planet | null;
   satellites: Satellite[];
   isDummy: boolean;
+  ageGroup: AgeGroup | null;
+  gender: Gender | null;
+  bio: string;
+  soundId: SoundId | null;
 };
+
+type MockPin = { userId: UserId; targetUserId: UserId; at: number };
 
 type MockEncounter = { a: UserId; b: UserId; at: number };
 
@@ -47,6 +56,10 @@ function createInitialState() {
     planet: { imageUrl: null, palette: ME_FIXTURE.palette },
     satellites: [],
     isDummy: false,
+    ageGroup: ME_FIXTURE.ageGroup,
+    gender: ME_FIXTURE.gender,
+    bio: ME_FIXTURE.bio,
+    soundId: ME_FIXTURE.soundId,
   });
 
   const encounters: MockEncounter[] = [];
@@ -63,6 +76,10 @@ function createInitialState() {
       planet: { imageUrl: null, palette: f.palette },
       satellites: [],
       isDummy: true,
+      ageGroup: f.ageGroup ?? null,
+      gender: f.gender ?? null,
+      bio: f.bio ?? '',
+      soundId: f.soundId ?? null,
     });
     // 過去2週間に散らばるよう、決まった間隔ですれ違いを置く
     for (let i = 0; i < f.encounterCount; i++) {
@@ -73,9 +90,16 @@ function createInitialState() {
   const tagNames = new Set<string>();
   users.forEach((u) => u.tagNames.forEach((t) => tagNames.add(t)));
 
+  // ピン止め一覧がはじめから空にならないよう、2人ピン止めしておく
+  const pins: MockPin[] = [
+    { userId: MOCK_ME_ID, targetUserId: 'dummy-01', at: now - 2 * 60 * 60 * 1000 },
+    { userId: MOCK_ME_ID, targetUserId: 'dummy-03', at: now - 26 * 60 * 60 * 1000 },
+  ];
+
   return {
     users,
     encounters,
+    pins,
     tags: [...tagNames],
     currentUserId: MOCK_ME_ID as UserId | null,
   };
@@ -187,6 +211,10 @@ export const mockSource: DataSource = {
       planet: null,
       satellites: [],
       isDummy: false,
+      ageGroup: null,
+      gender: null,
+      bio: '',
+      soundId: null,
     });
     state.currentUserId = id;
     notifyAuth();
@@ -207,10 +235,14 @@ export const mockSource: DataSource = {
       organization: me.organization,
       tags: toTags(me.tagNames),
       planet: me.planet,
+      ageGroup: me.ageGroup,
+      gender: me.gender,
+      bio: me.bio,
+      soundId: me.soundId,
     };
   },
 
-  async updateMyProfile({ nickname, realName, organization, tagNames }) {
+  async updateMyProfile({ nickname, realName, organization, tagNames, ageGroup, gender, bio }) {
     await wait();
     const me = currentUser();
     me.nickname = nickname;
@@ -218,6 +250,14 @@ export const mockSource: DataSource = {
     me.organization = organization;
     me.tagNames = [...new Set(tagNames.map((t) => t.trim()).filter(Boolean))];
     me.tagNames.forEach(tagId);
+    if (ageGroup !== undefined) me.ageGroup = ageGroup;
+    if (gender !== undefined) me.gender = gender;
+    if (bio !== undefined) me.bio = bio;
+  },
+
+  async updateMySound(soundId) {
+    await wait();
+    currentUser().soundId = soundId;
   },
 
   async searchTags(query) {
@@ -341,7 +381,52 @@ export const mockSource: DataSource = {
       planet: user.planet,
       satellites: user.satellites.map(({ id, imageUrl }) => ({ id, imageUrl })),
       tags: toTags(user.tagNames),
+      ageGroup: user.ageGroup,
+      gender: user.gender,
+      bio: user.bio,
+      soundId: user.soundId,
+      isPinned: state.pins.some(
+        (p) => p.userId === state.currentUserId && p.targetUserId === user.id,
+      ),
     };
+  },
+
+  async listPins() {
+    await wait();
+    const me = currentUser();
+    return state.pins
+      .filter((p) => p.userId === me.id)
+      .sort((x, y) => y.at - x.at)
+      .flatMap((p) => {
+        const user = state.users.get(p.targetUserId);
+        if (!user) return [];
+        return [
+          {
+            userId: user.id,
+            nickname: user.nickname,
+            planet: user.planet,
+            featuredSatellites: featured(user),
+            tags: toTags(user.tagNames),
+            bio: user.bio,
+            soundId: user.soundId,
+            pinnedAt: new Date(p.at).toISOString(),
+          },
+        ];
+      });
+  },
+
+  async pin(targetUserId) {
+    await wait();
+    const me = currentUser();
+    if (targetUserId === me.id) throw new Error('自分の惑星はピン止めできません');
+    if (state.pins.some((p) => p.userId === me.id && p.targetUserId === targetUserId)) return;
+    state.pins.push({ userId: me.id, targetUserId, at: Date.now() });
+  },
+
+  async unpin(targetUserId) {
+    await wait();
+    const me = currentUser();
+    state.pins = state.pins.filter((p) => !(p.userId === me.id && p.targetUserId === targetUserId));
   },
 
   async getBleToken() {

@@ -160,7 +160,26 @@ export const shadow = {
     `0 ${diameter * 0.04}px ${diameter * 0.08}px rgba(31, 20, 89, 0.16)`,
 } as const;
 
+/**
+ * 日本語の文字用。Inter には日本語の文字がなく、iPhone の標準の日本語フォントで出る。
+ * そのとき太さが Inter の名前から伝わらないので、fontFamily を外して fontWeight で太さを指定する
+ */
+export function ja(style: TextStyleToken) {
+  const { fontFamily: family, ...rest } = style;
+  const fontWeight =
+    family === fontFamily.bold
+      ? ('700' as const)
+      : family === fontFamily.medium
+        ? ('500' as const)
+        : ('400' as const);
+  return { ...rest, fontWeight };
+}
+
 export const gradient = {
+  /** 宇宙の背景(Gradient/Space Background)。中心が濃く、外側ほど明るい紫 */
+  space: {
+    backgroundImage: `radial-gradient(circle farthest-corner at 50% 50%, ${primitive.space900} 0%, ${primitive.space800} 26.6%, #432C70 44%, ${primitive.space700} 61.5%, ${primitive.space600} 86.5%, ${primitive.space500} 97%)`,
+  },
   /** 水彩惑星の立体感を出す陰影(Gradient/Planet Shading)。不透明度 0.84 で重ねる */
   planetShading: {
     backgroundImage:

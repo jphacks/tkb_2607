@@ -1,11 +1,12 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NearbyCountPill } from '@/components/nearby-count-pill';
 import { SpaceBackground } from '@/components/space-background';
+import { SpaceDecorLayer } from '@/components/space-decor-layer';
 import { ErrorText, Loading, PrimaryButton, Screen } from '@/components/ui';
 import { useHome, useSaveHomeAngles } from '@/data';
 import { GravityView, MAX_VISIBLE_PLANETS } from '@/features/gravity';
@@ -40,6 +41,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <SpaceBackground />
+      <SpaceDecorLayer />
       <GravityView
         me={data.me}
         candidates={data.candidates}
@@ -57,12 +59,17 @@ export default function HomeScreen() {
           saveAngles.mutate({ periodStart, angles });
         }}
       />
-      {/* ピン止め一覧・お知らせの画面はまだないので、今は見た目だけ。画面ができたら Pressable にする */}
-      <View style={[styles.actions, { top: insets.top + space.sm }]} pointerEvents="none">
-        <View style={styles.roundButton}>
+      {/* お知らせの画面はまだないので、ベルは見た目だけ。画面ができたら Pressable にする */}
+      <View style={[styles.actions, { top: insets.top + space.sm }]} pointerEvents="box-none">
+        <Pressable
+          onPress={() => router.push('/pins')}
+          style={styles.roundButton}
+          accessibilityRole="button"
+          accessibilityLabel="ピン止めした星"
+        >
           <Image source={pinIcon} style={styles.pinIcon} contentFit="contain" />
-        </View>
-        <View style={styles.roundButton}>
+        </Pressable>
+        <View style={styles.roundButton} pointerEvents="none">
           <Image source={bellIcon} style={styles.bellIcon} contentFit="contain" />
         </View>
       </View>
