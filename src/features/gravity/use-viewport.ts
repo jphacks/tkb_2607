@@ -116,8 +116,6 @@ export function useViewport() {
     zoom,
     translateX,
     translateY,
-    viewportWidth,
-    viewportHeight,
     setViewportSize,
     setFitZoom,
   };
@@ -127,24 +125,25 @@ export type Viewport = ReturnType<typeof useViewport>;
 
 /**
  * 惑星1つにかける変形。等倍のときの中心 (centerX, centerY) の惑星を、画面全体を
- * 「画面の中心を基準に zoom 倍 → translate だけ移動」したときと同じ位置に動かし、
- * 大きさは planetZoomScale の範囲で変える。惑星ごとに呼ぶ
+ * 「画面の中心 (originX, originY) を基準に zoom 倍 → translate だけ移動」したときと同じ位置に動かし、
+ * 大きさは planetZoomScale の範囲で変える。惑星ごとに呼ぶ。
+ * 画面の中心は、軌道の点線の層(SpaceCameraLayer)と同じく描く領域の大きさから渡す
+ * (onLayout で入る viewportWidth / viewportHeight だと、レイアウト前は 0 で惑星だけずれる)
  */
 export function usePlanetCameraStyle(
-  viewport: Pick<
-    Viewport,
-    'zoom' | 'translateX' | 'translateY' | 'viewportWidth' | 'viewportHeight'
-  >,
+  viewport: Pick<Viewport, 'zoom' | 'translateX' | 'translateY'>,
   centerX: number,
   centerY: number,
+  originX: number,
+  originY: number,
 ) {
-  const { zoom, translateX, translateY, viewportWidth, viewportHeight } = viewport;
+  const { zoom, translateX, translateY } = viewport;
   return useAnimatedStyle(() => {
     const z = zoom.value;
     return {
       transform: [
-        { translateX: translateX.value + (z - 1) * (centerX - viewportWidth.value / 2) },
-        { translateY: translateY.value + (z - 1) * (centerY - viewportHeight.value / 2) },
+        { translateX: translateX.value + (z - 1) * (centerX - originX) },
+        { translateY: translateY.value + (z - 1) * (centerY - originY) },
         { scale: planetZoomScale(z) },
       ],
     };

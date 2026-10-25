@@ -1,9 +1,8 @@
 // ログイン・新規登録の画面。Figma: A02|ログイン
-// Google / Apple でのログインはまだないので、ボタンは見た目だけ(押すと「準備中」と出す)
+// ログインはメールアドレスとパスワードだけ(Figma にある Google / Apple でのログインは使わないので出さない)
 import { Image } from 'expo-image';
 import { useState, type ReactNode } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,9 +23,6 @@ import { ErrorText } from './ui';
 
 const logo = require('@/assets/images/ui/logo.png');
 const decor = require('@/assets/images/ui/login-decor.png');
-const googleLogo = require('@/assets/images/ui/google-logo.png');
-const appleLogo = require('@/assets/images/ui/apple-logo.png');
-const chevron = require('@/assets/images/ui/chevron.png');
 
 export function AuthForm({
   submitLabel,
@@ -57,9 +53,6 @@ export function AuthForm({
       setLoading(false);
     }
   };
-
-  const comingSoon = () =>
-    Alert.alert('準備中です', 'いまはメールアドレスでログインしてください。');
 
   return (
     <View style={styles.root}>
@@ -95,13 +88,6 @@ export function AuthForm({
             loading={loading}
             style={styles.submit}
           />
-          <View style={styles.divider}>
-            <View style={styles.line} />
-            <Text style={styles.dividerLabel}>または</Text>
-            <View style={styles.line} />
-          </View>
-          <SocialButton icon={googleLogo} label="Googleでログイン" onPress={comingSoon} />
-          <SocialButton icon={appleLogo} label="Appleでログイン" onPress={comingSoon} />
           {footer}
         </Sheet>
       </ScrollView>
@@ -122,26 +108,6 @@ function Input(props: TextInputProps) {
       autoCapitalize="none"
       {...props}
     />
-  );
-}
-
-function SocialButton({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: number;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable onPress={onPress} style={styles.social} accessibilityRole="button">
-      <View style={styles.socialCenter}>
-        <Image source={icon} style={styles.socialIcon} contentFit="contain" />
-        <Text style={styles.socialLabel}>{label}</Text>
-      </View>
-      <Image source={chevron} style={styles.chevron} contentFit="contain" />
-    </Pressable>
   );
 }
 
@@ -189,21 +155,6 @@ const styles = StyleSheet.create({
     color: '#2E1C9E',
   },
   submit: { marginTop: 2 },
-  divider: { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 4 },
-  line: { flex: 1, height: 1, backgroundColor: 'rgba(199, 191, 224, 0.65)' },
-  dividerLabel: { ...ja(typography.bodyXSmall), color: '#614D94' },
-  social: {
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: color.bg.surface,
-    borderWidth: 1,
-    borderColor: 'rgba(186, 178, 219, 0.65)',
-    justifyContent: 'center',
-  },
-  socialCenter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9 },
-  socialIcon: { width: 25, height: 25 },
-  socialLabel: { ...ja(typography.titleItem), color: '#2E1C9E' },
-  chevron: { position: 'absolute', right: 18, width: 16, height: 16 },
   footer: { flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: 2 },
   footerPrompt: { ...ja(typography.bodyXSmall), color: '#5C4A9E' },
   footerLink: { ...ja(typography.bodyXSmall), color: '#4F36AD', textDecorationLine: 'underline' },

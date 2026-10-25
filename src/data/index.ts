@@ -194,8 +194,9 @@ export const getBleToken = () => source.getBleToken();
 
 export async function reportEncounter(report: EncounterReport) {
   const result = await source.reportEncounter(report);
-  // ホームの半径は30分ごとに取り直す(useHome)ので、ここではホームを取り直さない
-  if (result.recorded) await invalidate('dummyUsers');
+  // ホームの半径は30分ごとに取り直す(useHome)ので、ここではホームを取り直さない。
+  // 惑星の詳細は、すれ違いが5回になると本名に変わるので取り直す
+  if (result.recorded) await invalidate('dummyUsers', 'planetDetail');
   return result;
 }
 
@@ -213,7 +214,8 @@ export function useDummyUsers() {
 export function useDemoAddEncounter() {
   return useMutation({
     mutationFn: (targetUserId: UserId) => source.demoAddEncounter(targetUserId),
-    onSuccess: () => invalidate('home', 'dummyUsers'),
+    // 惑星の詳細は、すれ違いが5回になると本名に変わるので取り直す
+    onSuccess: () => invalidate('home', 'dummyUsers', 'planetDetail'),
   });
 }
 

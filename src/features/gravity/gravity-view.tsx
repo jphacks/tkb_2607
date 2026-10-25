@@ -68,18 +68,27 @@ export type GravityLayoutOverrides = {
  */
 function ZoomCompensated({
   viewport,
+  origin,
   left,
   top,
   size,
   children,
 }: {
   viewport: Viewport;
+  /** 拡大の中心(描く領域の中心) */
+  origin: { x: number; y: number };
   left: number;
   top: number;
   size: number;
   children: ReactNode;
 }) {
-  const camera = usePlanetCameraStyle(viewport, left + size / 2, top + size / 2);
+  const camera = usePlanetCameraStyle(
+    viewport,
+    left + size / 2,
+    top + size / 2,
+    origin.x,
+    origin.y,
+  );
   return <Animated.View style={[styles.planet, { left, top }, camera]}>{children}</Animated.View>;
 }
 
@@ -160,6 +169,8 @@ export function GravityView({
   };
 
   const mePos = toScreen(ME_SLOT.x, ME_SLOT.y, ME_SLOT.size);
+  /** 拡大の中心。軌道の点線の層(SpaceCameraLayer)と同じく、描く領域の中心 */
+  const origin = { x: width / 2, y: height / 2 };
   const placed = visible.map((c) => {
     // 保存済みの角度にいない人(念のため)は、その場で計算した角度を使う
     const angle = savedAngles?.get(c.userId) ?? computedAngles.get(c.userId) ?? 0;
@@ -209,7 +220,14 @@ export function GravityView({
         <View style={StyleSheet.absoluteFill}>
           {placed.map(({ candidate: c, size, left, top }) => {
             return (
-              <ZoomCompensated key={c.userId} viewport={viewport} left={left} top={top} size={size}>
+              <ZoomCompensated
+                key={c.userId}
+                viewport={viewport}
+                origin={origin}
+                left={left}
+                top={top}
+                size={size}
+              >
                 <Pressable onPress={() => onPressPlanet(c.userId)}>
                   <PlanetNode
                     planet={c.planet}
@@ -224,7 +242,13 @@ export function GravityView({
               </ZoomCompensated>
             );
           })}
-          <ZoomCompensated viewport={viewport} left={mePos.left} top={mePos.top} size={mePos.size}>
+          <ZoomCompensated
+            viewport={viewport}
+            origin={origin}
+            left={mePos.left}
+            top={mePos.top}
+            size={mePos.size}
+          >
             <Pressable onPress={() => onPressPlanet(me.userId)}>
               <PlanetNode
                 planet={me.planet}
