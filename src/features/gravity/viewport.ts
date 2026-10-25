@@ -3,7 +3,8 @@
 // ジェスチャーの処理は UI スレッドで動くので、ここの関数はすべて worklet にしておく。
 import { GRAVITY_CONFIG } from './config';
 
-const { minZoom, maxZoom, planetZoomMin, planetZoomMax, fitMargin } = GRAVITY_CONFIG.viewport;
+const { minZoom, maxZoom, planetZoomMin, planetZoomMax, fitMargin, minFitZoom } =
+  GRAVITY_CONFIG.viewport;
 
 function clamp(value: number, min: number, max: number): number {
   'worklet';
@@ -32,11 +33,16 @@ export function fitZoomFor(planets: PlanetBox[], width: number, height: number):
     const half = (p.size * planetZoomMin) / 2;
     const dx = Math.abs(p.centerX - cx);
     const dy = Math.abs(p.centerY - cy);
-    if (dx > 0) fit = Math.min(fit, (cx - fitMargin - half) / dx);
-    if (dy > 0) fit = Math.min(fit, (cy - fitMargin - half) / dy);
+    // 余白の分を引くと場所が残らない(惑星が画面の半分近くの大きさ)ときは、どれだけ縮小しても収まらない。
+    // その惑星は計算から外し、ほかの惑星で下限を決める(1人のせいで縮小が全くできなくならないように)
+    const roomX = cx - fitMargin - half;
+    const roomY = cy - fitMargin - half;
+    if (dx > 0 && roomX > 0) fit = Math.min(fit, roomX / dx);
+    if (dy > 0 && roomY > 0) fit = Math.min(fit, roomY / dy);
   }
-  // 画面がとても小さいなどで計算できないときは、縮小しない
-  return Number.isFinite(fit) && fit > 0 ? fit : minZoom;
+  // 収まる計算ができなかったときは縮小しない。小さくなりすぎるときは minFitZoom で止める(星のない帯が見えないように)
+  if (!Number.isFinite(fit)) return minZoom;
+  return Math.max(fit, minFitZoom);
 }
 
 /**

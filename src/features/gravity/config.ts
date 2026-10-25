@@ -43,6 +43,12 @@ export const GRAVITY_CONFIG = {
     planetZoomMax: 1.6,
     /** 全員が見えるまで縮小するとき、画面の端から空ける余白(px) */
     fitMargin: 8,
+    /**
+     * 全員が見えるまで縮小するときでも、これより小さくはしない。
+     * 背景の星は B01 のフレームの縦横2倍の範囲(土台の DECORATION_BOUNDS)にしか置いていないので、
+     * 0.5 倍より小さくすると星のない帯が見える
+     */
+    minFitZoom: 0.5,
   },
 
   /**
