@@ -85,6 +85,13 @@ export function useSavePlanet() {
   });
 }
 
+export function useUpdateMyPlanetScale() {
+  return useMutation({
+    mutationFn: (sizeScale: number) => source.updateMyPlanetScale(sizeScale),
+    onSuccess: () => invalidate('myProfile', 'home', 'planetDetail', 'pins'),
+  });
+}
+
 export function useMySatellites() {
   const { user } = useAuth();
   return useQuery({

@@ -31,6 +31,10 @@ export function PlanetNode({
   satellites = [],
 }: Props) {
   const showRing = isMe && satellites.length > 0;
+  // 惑星本体は持ち主が決めた倍率で描く(輪・衛星は size のまま)。
+  // ラベルは、小さくしたときは本体の下端に寄せ、大きくしたときは標準の位置のまま
+  // (ホームの配置はラベルが標準の位置にある前提で画面に収めているので、下にずらすとはみ出す)
+  const labelAnchor = Math.min(size, size * (planet?.sizeScale ?? 1));
   return (
     <View style={{ width: size, height: size }}>
       {/* 輪は衛星の軌道。衛星がないときは出さない。奥の半分は惑星の後ろ、手前の半分は前に描く */}
@@ -40,7 +44,10 @@ export function PlanetNode({
       {isMe && <OrbitingSatellites satellites={satellites} size={size} />}
       {showLabel && (
         <View
-          style={[styles.labelSlot, { top: size + (isMe ? space.sm : space.xs) }]}
+          style={[
+            styles.labelSlot,
+            { top: (size + labelAnchor) / 2 + (isMe ? space.sm : space.xs) },
+          ]}
           pointerEvents="none"
         >
           <View style={styles.label}>
@@ -54,7 +61,20 @@ export function PlanetNode({
   );
 }
 
+/**
+ * 惑星本体。size × size の箱の中央に、直径 size × planet.sizeScale で描く
+ * (箱の大きさは変わらないので、呼び出し側の配置はそのまま。大きくしたぶんは箱からはみ出す)
+ */
 export function PlanetBody({ planet, size }: { planet: Planet | null; size: number }) {
+  const bodySize = size * (planet?.sizeScale ?? 1);
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <PlanetSurface planet={planet} size={bodySize} />
+    </View>
+  );
+}
+
+function PlanetSurface({ planet, size }: { planet: Planet | null; size: number }) {
   const circle = { width: size, height: size, borderRadius: size / 2 };
   if (planet?.imageUrl) {
     // 写真担当の惑星の画像は背景が透明で、輪や衛星が本体の外にはみ出す。丸く切らずに、

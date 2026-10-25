@@ -44,6 +44,8 @@ export interface DataSource {
 
   // 惑星・衛星
   savePlanet(input: SavePlanetInput): Promise<void>;
+  /** 自分の惑星の大きさ(倍率)を変える。惑星がまだなければ何もしない */
+  updateMyPlanetScale(sizeScale: number): Promise<void>;
   listMySatellites(): Promise<Satellite[]>;
   addSatellite(input: AddSatelliteInput): Promise<Satellite>;
   updateSatellite(id: string, input: UpdateSatelliteInput): Promise<void>;

@@ -11,6 +11,8 @@ import type {
   UserId,
 } from '@/types/domain';
 
+import { clampPlanetScale } from '@/features/gravity';
+
 import { MAX_FEATURED_SATELLITES, type DataSource } from '../source';
 import { DUMMY_FIXTURES, ME_FIXTURE, MOCK_ME_ID } from './fixtures';
 
@@ -53,7 +55,7 @@ function createInitialState() {
     realName: ME_FIXTURE.realName,
     organization: ME_FIXTURE.organization,
     tagNames: [...ME_FIXTURE.tags],
-    planet: { imageUrl: null, palette: ME_FIXTURE.palette },
+    planet: { imageUrl: null, palette: ME_FIXTURE.palette, sizeScale: 1 },
     satellites: [],
     isDummy: false,
     ageGroup: ME_FIXTURE.ageGroup,
@@ -73,7 +75,7 @@ function createInitialState() {
       realName: null,
       organization: f.organization,
       tagNames: [...f.tags],
-      planet: { imageUrl: null, palette: f.palette },
+      planet: { imageUrl: null, palette: f.palette, sizeScale: 1 },
       satellites: [],
       isDummy: true,
       ageGroup: f.ageGroup ?? null,
@@ -267,7 +269,15 @@ export const mockSource: DataSource = {
 
   async savePlanet({ planetImageUri, palette }) {
     await wait();
-    currentUser().planet = { imageUrl: planetImageUri, palette };
+    const user = currentUser();
+    // 作り直しても大きさはそのまま(Supabase の upsert と同じ)
+    user.planet = { imageUrl: planetImageUri, palette, sizeScale: user.planet?.sizeScale ?? 1 };
+  },
+
+  async updateMyPlanetScale(sizeScale) {
+    await wait();
+    const user = currentUser();
+    if (user.planet) user.planet = { ...user.planet, sizeScale: clampPlanetScale(sizeScale) };
   },
 
   async listMySatellites() {

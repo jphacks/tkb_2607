@@ -155,6 +155,7 @@ export type Database = {
         Row: {
           image_path: string | null;
           palette: Json;
+          size_scale: number;
           source_photo_path: string | null;
           updated_at: string;
           user_id: string;
@@ -162,6 +163,7 @@ export type Database = {
         Insert: {
           image_path?: string | null;
           palette?: Json;
+          size_scale?: number;
           source_photo_path?: string | null;
           updated_at?: string;
           user_id: string;
@@ -169,6 +171,7 @@ export type Database = {
         Update: {
           image_path?: string | null;
           palette?: Json;
+          size_scale?: number;
           source_photo_path?: string | null;
           updated_at?: string;
           user_id?: string;
@@ -348,6 +351,7 @@ export type Database = {
           organization: string;
           palette: Json;
           planet_image_path: string;
+          planet_size_scale: number;
           shared_tag_count: number;
           tag_union_count: number;
           user_id: string;

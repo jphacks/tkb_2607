@@ -8,20 +8,25 @@ import { Sparkle } from './space';
 
 export function MyPlanetHero({
   satellites = 'all',
+  sizeScale,
   onPressPlanet,
 }: {
   /** all:登録した衛星すべて / featured:ホームに出す衛星だけ */
   satellites?: 'all' | 'featured';
+  /** 保存前の惑星の大きさを試しに見せる。省略時は保存済みの大きさ */
+  sizeScale?: number;
   onPressPlanet?: () => void;
 }) {
   const { data: profile } = useMyProfile();
   const { data: mine } = useMySatellites();
   const list = (mine ?? []).filter((s) => satellites === 'all' || s.isFeatured);
+  const saved = profile?.planet ?? null;
+  const planet = saved && sizeScale !== undefined ? { ...saved, sizeScale } : saved;
 
   return (
     <View style={styles.hero}>
       <PlanetOrbit
-        planet={profile?.planet ?? null}
+        planet={planet}
         satellites={list}
         size="md"
         swipeable

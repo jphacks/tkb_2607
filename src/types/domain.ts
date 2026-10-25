@@ -14,6 +14,8 @@ export type Planet = {
   imageUrl: string | null;
   /** 惑星の色(例: "#E8A0B4")。先頭ほど代表的な色 */
   palette: string[];
+  /** 惑星の大きさの倍率(1 が標準)。範囲は @/features/gravity の PLANET_SCALE_RANGE。衛星の大きさは変えない */
+  sizeScale: number;
 };
 
 export type SatelliteSummary = {
