@@ -32,6 +32,7 @@ const primitive = {
   whiteA42: 'rgba(255, 255, 255, 0.42)',
   whiteA55: 'rgba(255, 255, 255, 0.55)',
   whiteA70: 'rgba(255, 255, 255, 0.70)',
+  whiteA85: 'rgba(255, 255, 255, 0.85)',
   blackA33: 'rgba(0, 0, 0, 0.33)',
   periwinkleA35: 'rgba(140, 150, 235, 0.35)',
   lavenderA65: 'rgba(173, 163, 237, 0.65)',
@@ -86,7 +87,7 @@ export const color = {
     disabled: primitive.lavender200,
   },
   decor: {
-    planetRing: primitive.violetA32,
+    planetRing: primitive.whiteA85,
     orbit: primitive.whiteA55,
     sparkle: primitive.whiteA70,
   },

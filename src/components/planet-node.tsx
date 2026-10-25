@@ -20,6 +20,12 @@ type Props = {
   isMe?: boolean;
   /** 惑星の周りに出す衛星(最大3つ)。あれば輪も描く */
   satellites?: SatelliteSummary[];
+  /**
+   * 何倍の細かさで描くか(1 以上)。ズームで拡大して見せる所では、拡大したときの最大の倍率を渡す。
+   * 中身を resolution 倍の大きさで描いてから縮めて size × size に収めるので、拡大してもぼやけない
+   * (等倍で描いたものを拡大すると、画像・文字・輪が引き伸ばされてぼやける)
+   */
+  resolution?: number;
 };
 
 export function PlanetNode({
@@ -29,37 +35,66 @@ export function PlanetNode({
   showLabel = true,
   isMe = false,
   satellites = [],
+  resolution = 1,
 }: Props) {
+  const r = Math.max(1, resolution);
+  /** 実際に描く大きさ。中の長さはすべてこれを基準にする */
+  const drawSize = size * r;
   const showRing = satellites.length > 0;
   // 惑星本体は持ち主が決めた倍率で描く(輪・衛星は size のまま)。
   // ラベルは、小さくしたときは本体の下端に寄せ、大きくしたときは標準の位置のまま
   // (ホームの配置はラベルが標準の位置にある前提で画面に収めているので、下にずらすとはみ出す)
-  const labelAnchor = Math.min(size, size * (planet?.sizeScale ?? 1));
+  const labelAnchor = Math.min(drawSize, drawSize * (planet?.sizeScale ?? 1));
+  const labelType = isMe ? typography.labelSmall : typography.labelPlanet;
   return (
     <View style={{ width: size, height: size }}>
-      {/* 輪は衛星の軌道。衛星がないときは出さない。奥の半分は惑星の後ろ、手前の半分は前に描く */}
-      {showRing && <PlanetRing size={size} half="back" />}
-      <PlanetBody planet={planet} size={size} />
-      {showRing && <PlanetRing size={size} half="front" />}
-      {showRing && <OrbitingSatellites satellites={satellites} size={size} />}
-      {showLabel && (
-        <View
-          style={[
-            styles.labelSlot,
-            { top: (size + labelAnchor) / 2 + (isMe ? space.sm : space.xs) },
-          ]}
-          pointerEvents="none"
-        >
-          <View style={styles.label}>
-            <Text style={[styles.labelText, isMe ? typography.labelSmall : typography.labelPlanet]}>
-              {label}
-            </Text>
+      <View
+        style={{
+          position: 'absolute',
+          left: (size - drawSize) / 2,
+          top: (size - drawSize) / 2,
+          width: drawSize,
+          height: drawSize,
+          transform: [{ scale: 1 / r }],
+        }}
+      >
+        {/* 輪は衛星の軌道。衛星がないときは出さない。奥の半分は惑星の後ろ、手前の半分は前に描く */}
+        {showRing && <PlanetRing size={drawSize} half="back" />}
+        <PlanetBody planet={planet} size={drawSize} />
+        {showRing && <PlanetRing size={drawSize} half="front" />}
+        {showRing && <OrbitingSatellites satellites={satellites} size={drawSize} />}
+        {showLabel && (
+          <View
+            style={[
+              styles.labelSlot,
+              {
+                top: (drawSize + labelAnchor) / 2 + (isMe ? space.sm : space.xs) * r,
+                left: LABEL_OVERFLOW * r,
+                right: LABEL_OVERFLOW * r,
+              },
+            ]}
+            pointerEvents="none"
+          >
+            <View
+              style={[
+                styles.label,
+                { paddingHorizontal: LABEL_PADDING.x * r, paddingVertical: LABEL_PADDING.y * r },
+              ]}
+            >
+              <Text style={[styles.labelText, labelType, { fontSize: labelType.fontSize * r }]}>
+                {label}
+              </Text>
+            </View>
           </View>
-        </View>
-      )}
+        )}
+      </View>
     </View>
   );
 }
+
+const LABEL_PADDING = { x: 7, y: 3 };
+/** ラベルは惑星より幅が広いことがあるので、左右にこの分(負の値)はみ出せる枠の中で中央ぞろえにする */
+const LABEL_OVERFLOW = -100;
 
 /**
  * 惑星本体。size × size の箱の中央に、直径 size × planet.sizeScale で描く
@@ -108,16 +143,21 @@ export function PlanetSurface({ planet, size }: { planet: Planet | null; size: n
   );
 }
 
-// 自分の惑星の輪。94px の惑星で 147 × 30px の楕円、右上がりに 22.52° 傾く
+// 惑星の輪。94px の惑星で 147 × 30px の楕円、右上がりに 22.52° 傾く。
+// 線の太さ・影も惑星の直径に対する割合にして、大きく描いても(resolution)見た目の比率を変えない
 const RING = { width: 1.565, height: 0.319, offsetX: -0.053, offsetY: 0.066, angle: '-22.52deg' };
-const RING_PADDING = 8; // 影がはみ出す分
+/** 94px の惑星で、線の太さ 1.5px・影のずれ 4px・ぼかし 2px・影がはみ出す分 8px */
+const RING_STROKE = 1.5 / 94;
+const RING_SHADOW = { dy: 4 / 94, blur: 2 / 94 };
+const RING_PADDING = 8 / 94;
 
 /** half:back は輪の奥の半分(上側)、front は手前の半分(下側)だけを描く */
 function PlanetRing({ size, half }: { size: number; half: 'back' | 'front' }) {
   const w = size * RING.width;
   const h = size * RING.height;
-  const canvasW = w + RING_PADDING * 2;
-  const canvasH = h + RING_PADDING * 2;
+  const padding = size * RING_PADDING;
+  const canvasW = w + padding * 2;
+  const canvasH = h + padding * 2;
   const clip =
     half === 'back' ? rect(0, 0, canvasW, canvasH / 2) : rect(0, canvasH / 2, canvasW, canvasH / 2);
   return (
@@ -127,33 +167,40 @@ function PlanetRing({ size, half }: { size: number; half: 'back' | 'front' }) {
         position: 'absolute',
         width: canvasW,
         height: canvasH,
-        left: size / 2 + size * RING.offsetX - w / 2 - RING_PADDING,
-        top: size / 2 + size * RING.offsetY - h / 2 - RING_PADDING,
+        left: size / 2 + size * RING.offsetX - w / 2 - padding,
+        top: size / 2 + size * RING.offsetY - h / 2 - padding,
         transform: [{ rotate: RING.angle }],
       }}
     >
       <Group clip={clip}>
         <Oval
-          x={RING_PADDING}
-          y={RING_PADDING}
+          x={padding}
+          y={padding}
           width={w}
           height={h}
           style="stroke"
-          strokeWidth={1}
+          strokeWidth={size * RING_STROKE}
           color={color.decor.planetRing}
         >
-          <Shadow dx={0} dy={4} blur={2} color="rgba(0, 0, 0, 0.15)" />
+          <Shadow
+            dx={0}
+            dy={size * RING_SHADOW.dy}
+            blur={size * RING_SHADOW.blur}
+            color="rgba(0, 0, 0, 0.15)"
+          />
         </Oval>
       </Group>
     </Canvas>
   );
 }
 
-// 衛星を置く3か所(惑星の中心からのずれ・箱の大きさは惑星の直径に対する割合)。Figma の配置を写したもの
+// 衛星を置く3か所:輪の右端・中央(手前)・左端。惑星の中心からのずれと箱の大きさは、惑星の直径に対する割合。
+// Figma「B01｜宇宙ホーム」の自分の惑星(猫・フラペチーノ・スーツケース)の位置を写したもの。
+// 衛星の画像は縦横比がばらばらなので、箱は Figma の画像と同じ面積の正方形にして、中に収める
 const SATELLITE_SLOTS = [
-  { x: 0.047, y: -0.495, w: 0.8, h: 0.48, angle: '0deg' },
-  { x: 0.405, y: 0.209, w: 0.32, h: 0.47, angle: '11.81deg' },
-  { x: -0.36, y: 0.043, w: 0.24, h: 0.45, angle: '-29.26deg' },
+  { x: 0.515, y: -0.356, size: 0.453 }, // 右端
+  { x: 0.363, y: 0.123, size: 0.462 }, // 中央
+  { x: -0.733, y: 0.417, size: 0.538 }, // 左端
 ];
 
 function OrbitingSatellites({
@@ -165,8 +212,8 @@ function OrbitingSatellites({
 }) {
   return satellites.slice(0, SATELLITE_SLOTS.length).map((satellite, i) => {
     const slot = SATELLITE_SLOTS[i];
-    const w = size * slot.w;
-    const h = size * slot.h;
+    const w = size * slot.size;
+    const h = w;
     return (
       <Image
         key={satellite.id}
@@ -179,7 +226,6 @@ function OrbitingSatellites({
           height: h,
           left: size / 2 + size * slot.x - w / 2,
           top: size / 2 + size * slot.y - h / 2,
-          transform: [{ rotate: slot.angle }],
         }}
       />
     );
@@ -187,13 +233,7 @@ function OrbitingSatellites({
 }
 
 const styles = StyleSheet.create({
-  // ラベルは惑星より幅が広いことがあるので、左右にはみ出せる枠の中で中央ぞろえにする
-  labelSlot: { position: 'absolute', left: -100, right: -100, alignItems: 'center' },
-  label: {
-    backgroundColor: color.bg.surface,
-    borderRadius: radius.full,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-  },
+  labelSlot: { position: 'absolute', alignItems: 'center' },
+  label: { backgroundColor: color.bg.surface, borderRadius: radius.full },
   labelText: { color: color.text.label },
 });

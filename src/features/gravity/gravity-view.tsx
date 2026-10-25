@@ -32,6 +32,8 @@ import { usePlanetCounterScaleStyle, useViewport } from './use-viewport';
 import { fitZoomFor } from './viewport';
 
 const PLANET_SIZE = GRAVITY_CONFIG.layout.planetSize;
+/** 惑星は、ズームで一番大きく見えるときの倍率の細かさで描く(拡大してもぼやけないように) */
+const PLANET_RESOLUTION = GRAVITY_CONFIG.viewport.planetZoomMax;
 
 /** config.ts の avoidAreas(画面の pt)を、width × height の画面のデザイン上の座標に直す */
 function avoidDesignRects(width: number, height: number, safeTop: number): DesignRect[] {
@@ -213,6 +215,7 @@ export function GravityView({
                     label={c.realName ?? c.nickname}
                     showLabel={c.encounterCount >= GRAVITY_CONFIG.labelMinEncounters}
                     satellites={c.featuredSatellites}
+                    resolution={PLANET_RESOLUTION}
                   />
                 </Pressable>
               </ZoomCompensated>
@@ -226,6 +229,7 @@ export function GravityView({
                 label="You"
                 isMe
                 satellites={me.featuredSatellites}
+                resolution={PLANET_RESOLUTION}
               />
             </Pressable>
           </ZoomCompensated>
