@@ -21,7 +21,7 @@ import { source } from './source-instance';
 
 export { AuthProvider, useAuth } from './auth';
 export { queryClient } from './query-client';
-export { MAX_FEATURED_SATELLITES, type Credentials } from './source';
+export { MAX_FEATURED_SATELLITES, REAL_NAME_MIN_ENCOUNTERS, type Credentials } from './source';
 export { getSampleHome } from './samples';
 
 export const queryKeys = {

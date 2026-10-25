@@ -55,7 +55,7 @@ export function ProfileForm({
 
   return (
     <View style={styles.container}>
-      <Section label="本名" note="(自分にしか見えません)">
+      <Section label="本名" note="(5回以上すれ違った人にだけ見えます)">
         <Input value={realName} onChangeText={setRealName} placeholder="山田 太郎" />
       </Section>
       <Section label="ニックネーム" note="(みんなに表示されます)">

@@ -77,3 +77,6 @@ export interface DataSource {
 
 /** ホームで1つの惑星の周りに出す衛星の上限 */
 export const MAX_FEATURED_SATELLITES = 3;
+
+/** すれ違いがこの回数以上の相手にだけ、ホームで本名を見せる(サーバーの get_home_candidates と同じ値) */
+export const REAL_NAME_MIN_ENCOUNTERS = 5;

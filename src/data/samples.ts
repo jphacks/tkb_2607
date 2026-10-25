@@ -21,6 +21,7 @@ export function getSampleHome(count: number): HomeData {
     return {
       userId: `sample-${i + 1}`,
       nickname: round === 0 ? base.nickname : `${base.nickname}${round + 1}`,
+      realName: null,
       organization: base.organization,
       planet: { imageUrl: null, palette: base.palette, sizeScale: 1 },
       featuredSatellites: [],

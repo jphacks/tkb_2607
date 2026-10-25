@@ -352,6 +352,7 @@ export type Database = {
           palette: Json;
           planet_image_path: string;
           planet_size_scale: number;
+          real_name: string;
           shared_tag_count: number;
           tag_union_count: number;
           user_id: string;

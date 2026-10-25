@@ -209,7 +209,8 @@ export function GravityView({
                   <PlanetNode
                     planet={c.planet}
                     size={size}
-                    label={c.nickname}
+                    // 本名を見せてよい相手(すれ違い5回以上)なら本名、それ以外はニックネーム
+                    label={c.realName ?? c.nickname}
                     showLabel={c.encounterCount >= GRAVITY_CONFIG.labelMinEncounters}
                     satellites={c.featuredSatellites}
                   />

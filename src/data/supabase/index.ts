@@ -322,6 +322,8 @@ export const supabaseSource: DataSource = {
       candidates: rows.map((r): HomeCandidate => ({
         userId: r.user_id,
         nickname: r.nickname,
+        // すれ違いが5回未満の相手・本名を登録していない人は null で返ってくる
+        realName: r.real_name ?? null,
         organization: r.organization,
         planet: toPlanet({
           image_path: r.planet_image_path,

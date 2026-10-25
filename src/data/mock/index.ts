@@ -13,7 +13,7 @@ import type {
 
 import { clampPlanetScale } from '@/features/gravity';
 
-import { MAX_FEATURED_SATELLITES, type DataSource } from '../source';
+import { MAX_FEATURED_SATELLITES, REAL_NAME_MIN_ENCOUNTERS, type DataSource } from '../source';
 import { DUMMY_FIXTURES, ME_FIXTURE, MOCK_ME_ID } from './fixtures';
 
 // サーバー側(supabase/migrations)と同じ値にそろえる
@@ -331,6 +331,7 @@ export const mockSource: DataSource = {
       candidates.push({
         userId: user.id,
         nickname: user.nickname,
+        realName: timestamps.length >= REAL_NAME_MIN_ENCOUNTERS ? user.realName : null,
         organization: user.organization,
         planet: user.planet,
         featuredSatellites: featured(user),
