@@ -124,8 +124,7 @@ function PinCard({ pin }: { pin: PinnedPlanet }) {
       style={styles.card}
     >
       <View style={styles.planetArea}>
-        <View style={styles.ring} />
-        {/* カードの輪・衛星の配置が 80px 前提なので、惑星サイズの倍率は使わず標準の大きさで出す */}
+        {/* カードの衛星の配置が 80px 前提なので、惑星サイズの倍率は使わず標準の大きさで出す */}
         <PlanetSurface planet={pin.planet} size={80} />
         {left && (
           <Image source={{ uri: left.imageUrl }} style={styles.satLeft} contentFit="contain" />
@@ -203,16 +202,6 @@ const styles = StyleSheet.create({
     boxShadow: shadow.cardOnDark,
   },
   planetArea: { alignSelf: 'center', width: 112, height: 80, alignItems: 'center' },
-  ring: {
-    position: 'absolute',
-    top: 25,
-    width: 112,
-    height: 32,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: color.decor.planetRing,
-    zIndex: 2,
-  },
   satLeft: { position: 'absolute', left: -8, top: 22, width: 32, height: 32, zIndex: 3 },
   satRight: { position: 'absolute', right: -6, top: 38, width: 28, height: 28, zIndex: 3 },
   pinButton: {

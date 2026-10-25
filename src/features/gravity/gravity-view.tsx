@@ -211,6 +211,7 @@ export function GravityView({
                     size={size}
                     label={c.nickname}
                     showLabel={c.encounterCount >= GRAVITY_CONFIG.labelMinEncounters}
+                    satellites={c.featuredSatellites}
                   />
                 </Pressable>
               </ZoomCompensated>

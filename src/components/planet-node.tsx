@@ -1,4 +1,4 @@
-// ホームに並ぶ惑星1つぶんの見た目(惑星・名前ラベル・自分の輪と衛星)。
+// ホームに並ぶ惑星1つぶんの見た目(惑星・名前ラベル・輪と衛星)。
 // 置く場所は決めない。呼び出し側が size × size の箱として配置する(ラベル・輪・衛星ははみ出して描く)。
 // Figma: Home フレームの「Watercolor planet surface」「User label」
 import { Canvas, Group, Oval, rect, Shadow } from '@shopify/react-native-skia';
@@ -16,9 +16,9 @@ type Props = {
   label: string;
   /** false なら名前ラベルを出さない(遠い惑星・見切れる惑星) */
   showLabel?: boolean;
-  /** 自分の惑星なら、輪と衛星を描き、ラベルを大きくする */
+  /** 自分の惑星なら、ラベルを大きくする */
   isMe?: boolean;
-  /** isMe のときだけ使う。最大3つ */
+  /** 惑星の周りに出す衛星(最大3つ)。あれば輪も描く */
   satellites?: SatelliteSummary[];
 };
 
@@ -30,7 +30,7 @@ export function PlanetNode({
   isMe = false,
   satellites = [],
 }: Props) {
-  const showRing = isMe && satellites.length > 0;
+  const showRing = satellites.length > 0;
   // 惑星本体は持ち主が決めた倍率で描く(輪・衛星は size のまま)。
   // ラベルは、小さくしたときは本体の下端に寄せ、大きくしたときは標準の位置のまま
   // (ホームの配置はラベルが標準の位置にある前提で画面に収めているので、下にずらすとはみ出す)
@@ -41,7 +41,7 @@ export function PlanetNode({
       {showRing && <PlanetRing size={size} half="back" />}
       <PlanetBody planet={planet} size={size} />
       {showRing && <PlanetRing size={size} half="front" />}
-      {isMe && <OrbitingSatellites satellites={satellites} size={size} />}
+      {showRing && <OrbitingSatellites satellites={satellites} size={size} />}
       {showLabel && (
         <View
           style={[
