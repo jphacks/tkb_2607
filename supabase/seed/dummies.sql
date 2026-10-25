@@ -42,10 +42,20 @@ insert into dummy_seed values
 alter table dummy_seed add column id uuid;
 update dummy_seed set id = ('00000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
 
+-- 本名(すれ違いが5回以上の相手のホームにだけ、名前ラベルに出る)
+alter table dummy_seed add column real_name text;
+update dummy_seed d set real_name = v.name
+from (values
+  (1, '青木 空'), (2, '橘 蜜柑'), (3, '桃井 花'), (4, '青山 葵'),
+  (5, '栗田 胡桃'), (6, '若林 葉月'), (7, '柚木 結'), (8, '紫野 澄'),
+  (9, '古川 琥珀'), (10, '雫石 澪'), (11, '星野 蛍'), (12, '日向 陽')
+) as v(n, name)
+where d.n = v.n;
+
 insert into public.profiles (id, nickname, organization, age_group, gender, bio, sound_id, is_dummy)
   select id, nickname, organization, age_group, gender, bio, sound_id, true from dummy_seed;
 
-insert into public.private_profiles (user_id) select id from dummy_seed;
+insert into public.private_profiles (user_id, real_name) select id, real_name from dummy_seed;
 
 insert into public.planets (user_id, image_path, palette)
   select id, 'dummy/' || planet || '.png', palette from dummy_seed;
