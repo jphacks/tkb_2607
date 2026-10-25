@@ -37,7 +37,6 @@ const primitive = {
   periwinkleA35: 'rgba(140, 150, 235, 0.35)',
   lavenderA65: 'rgba(173, 163, 237, 0.65)',
   lavenderA70: 'rgba(199, 194, 255, 0.70)',
-  violetA32: 'rgba(82, 61, 242, 0.32)',
 } as const;
 
 // ---------- Color(用途別の色) ----------
