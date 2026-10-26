@@ -1,8 +1,5 @@
 # Perigee(ペリジー)
 
-<!-- 【画像】デモ動画のサムネイル(ホーム画面で惑星が並んでいる様子)。リンク先は YouTube のデモ動画 -->
-<!-- [![Perigee デモ動画](【要記入:サムネイル画像の URL】)](【要記入:デモ動画の URL】) -->
-
 > **まだ知らない、あなたのそばの惑星たち**
 >
 > 仲良くなれる可能性がある身近な人に気づける iOS アプリ
@@ -10,6 +7,12 @@
 <p align="center">
   <img src="docs/images/slide-title.png" alt="Perigee:仲良くなれる可能性がある身近な人に気づけるアプリ" width="90%">
 </p>
+
+## デモ動画
+
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/b41723dc-dba9-49e2-b203-98f6445050be" width="320" controls></video>
+</div>
 
 ## 製品概要
 
